@@ -11,7 +11,7 @@ def update_olog_id( logid, text, attachments):
     attachments: add new attachment files
     An example:
     
-    filename1 = '/XF11ID/analysis/2016_2/yuzhang/Results/August/af8f66/Report_uid=af8f66.pdf'
+    filename1 = '/XF11ID/analysis/2016_2/username/Results/August/af8f66/Report_uid=af8f66.pdf'
     atch=[  Attachment(open(filename1, 'rb')) ] 
     
     update_olog_id( logid=29327, text='add_test_atch', attachmenents= atch )    
@@ -38,7 +38,7 @@ def update_olog_uid( uid, text, attachments):
     attachments: add new attachment files    
     An example:
     
-    filename1 = '/XF11ID/analysis/2016_2/yuzhang/Results/August/af8f66/Report_uid=af8f66.pdf'
+    filename1 = '/XF11ID/analysis/2016_2/username/Results/August/af8f66/Report_uid=af8f66.pdf'
     atch=[  Attachment(open(filename1, 'rb')) ] 
     update_olog_uid( uid='af8f66', text='Add xpcs pdf report', attachments= atch )    
     
