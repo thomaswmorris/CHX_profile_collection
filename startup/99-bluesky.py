@@ -55,7 +55,7 @@ def move_E(energy, gap=[], xtal="Si111cryo", gapmode="auto", harm=5):
 			print('using manually entered gap value...')
 		else: print('error: function accepts only one energy and one gap value at a time')
 	elif gapmode =="auto":
-		gap=xf.get_gap(energy,harm)
+		gap=xf.get_gap(energy,harm)*1000
 		print('using calculated gap value from xfuncs!')
 	print('moving ivu_gap to '+str(gap)[:6]+'mm   and dcm.b to '+str(th_B)[:6]+'deg')
 	RE(mov(ivu_gap,gap,dcm.b,th_B))
@@ -84,6 +84,7 @@ def E_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=elm.sum_
 	elif gapmode =="auto":
 		gap=list(xf.get_gap(energy,harm))  
 		print('using calculated gap values from xfuncs!')
+	gap = np.array(gap)*1000
 	inner = cycler(dcm.b,th_B)+cycler(ivu_gap,gap)
 	#plan = PlanND([det],inner)
 	plan = scan_nd([det],inner)
@@ -300,7 +301,7 @@ class SerializerHack(Serializer):
 
 
 directory = '/home/xf11id/specfiles/'
-prefix = 'chx_spec_2019_07_18'
+prefix = 'chx_spec_2019_08_14'
 
 
 def spec_factory(name, doc):

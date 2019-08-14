@@ -316,6 +316,8 @@ fe.xg.readback.name = 'fe_xg'
 fe.yg.readback.name = 'fe_yg'
 
 
+# inverted flowcell orientation
 
-
-
+flowcell_x=EpicsMotor('XF:11IDB-ES{Dif-Ax:ZH}Mtr',name='flowcell_x') 
+flowcell_z=EpicsMotor('XF:11IDB-ES{Dif-Ax:XH}Mtr',name='flowcell_z')
+flowcell_y = diff.yh

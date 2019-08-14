@@ -595,13 +595,13 @@ def dcm_roll(Bragg,offset,distance,offmode='mm',pixsize=5.0):
     by LW 03/27/2015
     function to calculate Roll correction on the DCM
     calling sequence: dcm_roll(Bragg,offset,distance,offmode='mm',pixsize=5.0)
-    Bragg: set of Bragg angles
+    Bragg: set of Bragg angles [use negative values, as in beamline coordinate system!!!]
     offset: set of corresponding offsets
     offmode: units of offsets = mm or pixel (default:'mm')
     pixsize: pixel size for offset conversion to mm, if offsets are given in pixels
     default is 5um (pixsize is ignored, if offmode is 'mm')
     distance: DCM center of 1st xtal to diagnostic/slit [mm]
-    preset distances available: 'dcm_bpm',dcm_mbs', 'dcm-bds', 'dcm_sample', 'dcm_s1' (pre-kinoform slit)
+    preset distances available: 'dcm_bpm',dcm_mbs', 'dcm_bds', 'dcm_sample', 'dcm_s1' (pre-kinoform slit)
     """
     import numpy as np
     from scipy import optimize
@@ -645,7 +645,7 @@ def dcm_roll(Bragg,offset,distance,offmode='mm',pixsize=5.0):
     plt.xlabel('Bragg angle  [deg.]')
     print('x_0= ',p1[0],'mm')
     print('\Delta \Phi= ',p1[1]*180.0/np.pi,'deg')
-    print('movr(dcm.r,'+str(p1[1]*180.0/np.pi)+')')
+    print('movr(dcm.r,'+str(p1[1]*-180.0/np.pi)+')')
     
 
 def get_ID_calibration_dan(gapstart,gapstop,gapstep=.2,gapoff=0):
