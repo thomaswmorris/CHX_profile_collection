@@ -305,8 +305,10 @@ prefix = 'chx_spec_2019_08_14'
 
 
 def spec_factory(name, doc):
-    spec_cb = SerializerHack(MultiFileManagerHack(directory, allowed_modes=('x','a')),
-                     file_prefix=prefix)
+    #spec_cb = SerializerHack(MultiFileManagerHack(directory, allowed_modes=('x','a')),
+    #                 file_prefix=prefix)
+    spec_cb = Serializer(MultiFileManagerHack(directory, allowed_modes=('x','a')),
+                     file_prefix=prefix, flush=True)
     spec_cb(name, doc)
     return [spec_cb], []
 
