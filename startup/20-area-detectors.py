@@ -194,11 +194,12 @@ class EigerBase(AreaDetector):
     # hotfix: shadow non-existant PV
     size_link = None
 
-    def stage(self):
+    def stage(self, *args, **kwargs):
         # before parent
-        super().stage()
+        ret = super().stage(*args, **kwargs)
         # after parent
         set_and_wait(self.manual_trigger, 1)
+        return ret
 
     def unstage(self):
         set_and_wait(self.manual_trigger, 0)
@@ -209,16 +210,47 @@ class EigerBase(AreaDetector):
         return {'fields': [self.stats1.total.name]}
 
 
+class EigerDetectorCamV33(AreaDetectorCam):
+    '''This is used to update the Eiger detector to AD33.
+    '''
+    wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
+                           string=True, kind='config')
 
-class EigerSingleTrigger(SingleTrigger, EigerBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+
+    def ensure_nonblocking(self):
+        self.stage_sigs['wait_for_plugins'] = 'Yes'
+        for c in self.parent.component_names:
+            cpt = getattr(self.parent, c)
+            if cpt is self:
+                continue
+            if hasattr(cpt, 'ensure_nonblocking'):
+                cpt.ensure_nonblocking()
+
+
+class EigerBaseV33(EigerBase):
+    cam = Cpt(EigerDetectorCamV33, 'cam1:')
+    stats1 = Cpt(StatsPluginV33, 'Stats1:')
+    stats2 = Cpt(StatsPluginV33, 'Stats2:')
+    stats3 = Cpt(StatsPluginV33, 'Stats3:')
+    stats4 = Cpt(StatsPluginV33, 'Stats4:')
+    stats5 = Cpt(StatsPluginV33, 'Stats5:')
+
+
+class EigerSingleTrigger(SingleTrigger, EigerBaseV33):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs['cam.trigger_mode'] = 0
         self.stage_sigs['shutter_mode'] = 1  # 'EPICS PV'
         self.stage_sigs.update({'num_triggers': 1})
 
-    def trigger(self):
-        status = super().trigger()
+    def stage(self, *args, **kwargs):
+        return super().stage(*args, **kwargs)
+
+    def trigger(self, *args, **kwargs):
+        status = super().trigger(*args, **kwargs)
         set_and_wait(self.special_trigger_button, 1)
         return status
 
@@ -454,7 +486,8 @@ set_eiger_defaults(eiger1m_single)
 eiger4m_single = EigerSingleTrigger('XF:11IDB-ES{Det:Eig4M}',
                                     name='eiger4m_single')
 set_eiger_defaults(eiger4m_single)
-
+# AD v3.3+ config:
+eiger4m_single.cam.ensure_nonblocking()
 
 
 # Eiger 500K using fast trigger assembly
@@ -468,8 +501,6 @@ set_eiger_defaults(eiger1m)
 # Eiger 4M using fast trigger assembly
 eiger4m = EigerFastTrigger('XF:11IDB-ES{Det:Eig4M}', name='eiger4m')
 set_eiger_defaults(eiger4m)
-
-
 
 # setup manual eiger for 1d scans
 # prototype
