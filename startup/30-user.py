@@ -506,10 +506,14 @@ def prep_series_feedback():
     #RE(mv(hdm_feedback_selector, 0)) # turn off epics pid feedback on HDM encoder    
     caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)
     caput('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP',1)
-    caput('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP',1)   
+    caput('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP',1)
+    yield from bps.sleep(.5)   
     #RE(mv(bpm2_feedback_selector_a, 1))
     
-def wait_for_pv(dets, ready_signal, md=None):
+def trigger_ready():
+    caput('XF:11ID-CT{M1}bi3',1)
+    
+def wait_for_pv(dets, ready_signal,feedback_on=False ,md=None):
     if md is None:
         md = {}
     def still_waiting():
@@ -520,8 +524,11 @@ def wait_for_pv(dets, ready_signal, md=None):
     @bpp.run_decorator(md=md)
     def inner():
         print('waiting for trigger signal (PV)...')
+        trigger_ready() # let the world know: ready to be triggered
         while still_waiting():
             yield from bps.sleep(.01)
+        if feedback_on:
+            yield from prep_series_feedback()
         yield from bps.trigger_and_read(dets)        
     yield from inner()
     
@@ -544,9 +551,11 @@ def wait_for_motor(dets, motor, target, threshold, start_move=False, md=None):
      def inner():
          print('waiting for %s to reach %s within threshold of %s'%(motor.name,target,threshold))
          if start_move:
-             yield from bps.abs_set(motor, target, group='the_motor') 
+             yield from bps.abs_set(motor, target, feedback_on= False, group='the_motor') 
          while still_waiting(): 
-             yield from bps.sleep(.1) 
+             yield from bps.sleep(.1)
+         if feedback_on:
+            yield from prep_series_feedback() 
          yield from bps.trigger_and_read(dets) 
          yield from bps.wait(group='the_motor') 
      yield from inner() 
@@ -583,8 +592,9 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     """
     #timing delay between calling series and start of data acquisition:
     #caput('XF:11ID-CT{ES:1}bo2',1)
-    trigger_pv='XF:11ID-CT{ES:1}bi3'
-    trigger_PV=EpicsSignal('XF:11ID-CT{ES:1}bi3',name='trigger_PV')
+    #trigger_pv='XF:11ID-CT{ES:1}bi3'
+    trigger_pv = 'XF:11ID-CT{M1}bi4'
+    trigger_PV=EpicsSignal(trigger_pv,name='trigger_PV')
     
     if PV_trigger and position_trigger:
       raise series_Exception('error: Cannot trigger both at PV signal and motor position -> chose one!')
@@ -760,16 +770,17 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     if use_xbpm:
         caput( 'XF:11IDB-BI{XBPM:02}FaSoftTrig-SP',1,wait=True) #yugang add at Sep 13, 2017 for test fast shutter by using xbpm
         print('Use XBPM to monitor beam intensity.')
-    if feedback_on:
-        RE(prep_series_feedback())
+
     #RE(count([detector]),Measurement=comment)  ### ACQUISITION
     if PV_trigger:
-      dets = detlist      
-      RE(wait_for_pv(dets,trigger_PV,md=RE.md),Measurement=comment)
+      dets = detlist     
+      RE(wait_for_pv(dets,trigger_PV,feedback_on=feedback_on,md=RE.md),Measurement=comment)
     elif position_trigger:
-      dets = detlist
-      RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'],  md=RE.md),Measurement=comment) 
+      dets = detlist     
+      RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'], feedback_on=feedback_on, md=RE.md),Measurement=comment) 
     else:
+      if feedback_on:
+        RE(prep_series_feedback())
       RE(count(detlist),Measurement=comment)  ### testing camera images taken simultaneously
     # setting image number and period back for OAV camera:
     if OAV_mode != 'none':      ####! OAV !!!!!
