@@ -19,10 +19,10 @@ def update_olog_id( logid, text, attachments):
     '''
     url='https://logbook.nsls2.bnl.gov/Olog-11-ID/Olog'
     olog_client=SimpleOlogClient(  url= url, 
-                                    username= 'xf11id', password= '***REMOVED***'   )
+                                    username= 'xf11id', password= 'PASSSWORD'   )
     
     client = OlogClient( url='https://logbook.nsls2.bnl.gov/Olog-11-ID/Olog', 
-                                    username= 'xf11id', password= '***REMOVED***' )
+                                    username= 'xf11id', password= 'PASSWORD' )
     
     old_text =  olog_client.find( id = logid )[0]['text']    
     upd = LogEntry( text= old_text + '\n'+text,   attachments=  attachments,
