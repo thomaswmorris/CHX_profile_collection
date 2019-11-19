@@ -239,7 +239,71 @@ class EigerBaseV33(EigerBase):
     stats5 = Cpt(StatsPluginV33, 'Stats5:')
 
 
-class EigerSingleTrigger(SingleTrigger, EigerBaseV33):
+class EigerSingleTrigger(SingleTrigger, EigerBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stage_sigs['cam.trigger_mode'] = 0
+        self.stage_sigs['shutter_mode'] = 1  # 'EPICS PV'
+        self.stage_sigs.update({'num_triggers': 1})
+
+    def stage(self, *args, **kwargs):
+        return super().stage(*args, **kwargs)
+
+    def trigger(self, *args, **kwargs):
+        status = super().trigger(*args, **kwargs)
+        set_and_wait(self.special_trigger_button, 1)
+        return status
+
+    def read(self, *args, streaming=False, **kwargs):
+        '''
+            This is a test of using streaming read.
+            Ideally, this should be handled by a new _stream_attrs property.
+            For now, we just check for a streaming key in read and
+            call super() if False, or read the one key we know we should read
+            if True.
+
+            Parameters
+            ----------
+            streaming : bool, optional
+                whether to read streaming attrs or not
+        '''
+        #ret = super().read()
+        #print("super read() : {}".format(ret))
+        #return ret
+        if streaming:
+            key = self._image_name  # this comes from the SingleTrigger mixin
+            read_dict = super().read()
+            ret = OrderedDict({key: read_dict[key]})
+            return ret
+        else:
+            ret = super().read(*args, **kwargs)
+            return ret
+
+    def describe(self, *args, streaming=False, **kwargs):
+        '''
+            This is a test of using streaming read.
+            Ideally, this should be handled by a new _stream_attrs property.
+            For now, we just check for a streaming key in read and
+            call super() if False, or read the one key we know we should read
+            if True.
+
+            Parameters
+            ----------
+            streaming : bool, optional
+                whether to read streaming attrs or not
+        '''
+        if streaming:
+            key = self._image_name  # this comes from the SingleTrigger mixin
+            read_dict = super().describe()
+            ret = OrderedDict({key: read_dict[key]})
+            return ret
+        else:
+            ret = super().describe(*args, **kwargs)
+            return ret
+
+
+
+class EigerSingleTrigger_AD37(SingleTrigger, EigerBaseV33):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs['cam.trigger_mode'] = 0
@@ -483,7 +547,7 @@ eiger1m_single = EigerSingleTrigger('XF:11IDB-ES{Det:Eig1M}',
 set_eiger_defaults(eiger1m_single)
 
 # Eiger 4M using internal trigger
-eiger4m_single = EigerSingleTrigger('XF:11IDB-ES{Det:Eig4M}',
+eiger4m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig4M}',
                                     name='eiger4m_single')
 set_eiger_defaults(eiger4m_single)
 # AD v3.3+ config:
