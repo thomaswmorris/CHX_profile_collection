@@ -1,3 +1,4 @@
+import os
 
 
 CHA_Vol_PV = 'XF:11IDB-BI{XBPM:02}CtrlDAC:ALevel-SP'
@@ -40,9 +41,12 @@ def get_R(header_si, header_rh):
 voltage_CHA = [ 3.5, 4.0, 4.5, 5.0, 5.5]
 voltage_CHA = [ 3.0,3.2,3.4,3.6,3.8,4.0,4.2,4.4,4.6,4.8,5.0,5.2,5.4]
 
-r_eng=np.array(np.loadtxt("/home/xf11id/Downloads/R_Rh_0p180.txt"))[:,0]/1e3
-rsi_0p18=np.array(np.loadtxt("/home/xf11id/Downloads/R_Si_0p180.txt"))[:,1]
-rrh_0p18=np.array(np.loadtxt("/home/xf11id/Downloads/R_Rh_0p180.txt"))[:,1]
+profile_dir = get_ipython().profile_dir.location
+data_files_dir = 'data_files'
+
+r_eng=np.array(np.loadtxt(os.path.join(profile_dir, data_files_dir, "R_Rh_0p180.txt")))[:,0]/1e3
+rsi_0p18=np.array(np.loadtxt(os.path.join(profile_dir, data_files_dir, "R_Si_0p180.txt")))[:,1]
+rrh_0p18=np.array(np.loadtxt(os.path.join(profile_dir, data_files_dir, "R_Rh_0p180.txt")))[:,1]
 
 def get_Rdata( voltage_CHA, E ):
     R = np.zeros(len(voltage_CHA), len(E)) 
