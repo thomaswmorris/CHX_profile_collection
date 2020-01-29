@@ -538,7 +538,7 @@ def set_eiger_defaults(eiger):
 
 
 # Eiger 500k using internal trigger
-eiger500k_single = EigerSingleTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
+eiger500k_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
 set_eiger_defaults(eiger500k_single)
 
 # Eiger 1M using internal trigger
