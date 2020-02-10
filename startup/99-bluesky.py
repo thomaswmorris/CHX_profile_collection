@@ -279,7 +279,9 @@ def spec_factory(name, doc):
     return [spec_cb], []
 
 spec_factory.directory = '/home/xf11id/specfiles/'
-spec_factory.file_prefix = 'chx_spec_2020_01_24'
+# Initialize the filename to today's date.
+import time
+spec_factory.file_prefix = f'chx_spec_{time.strftime('%Y_%m_%d')}'
 
 
 run_router = RunRouter([spec_factory])
