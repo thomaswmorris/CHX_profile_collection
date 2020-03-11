@@ -96,13 +96,3 @@ class EigerHandler2:
         # TODO Return a multi-dimensional PIMS seq.
         return EigerImages2(master_path, self._images_per_file, md=md)
 
-# Make reference to the db instance defined in 00-startup.py.
-from eiger_io.fs_handler_dask import EigerHandlerDask
-db.reg.register_handler('AD_EIGER2', EigerHandlerDask, overwrite=True)
-db.reg.register_handler('AD_EIGER', EigerHandlerDask, overwrite=True)
-
-
-# new slice handler
-# needs later version of eiger_io
-from eiger_io.fs_handler import EigerHandler
-db.reg.register_handler('AD_EIGER_SLICE', EigerHandler, overwrite=True)
