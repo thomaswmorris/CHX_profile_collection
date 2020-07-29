@@ -302,7 +302,7 @@ class SerializerHack(Serializer):
 
 
 ## directory = '/home/xf11id/specfiles/'
-directory = os.path.expanduser("~") + "/specfiles/"
+directory = os.path.join(os.path.expanduser("~"), "specfiles/")
 prefix = 'chx_spec_2019_08_14'
 
 
@@ -336,4 +336,3 @@ def new_spec_file(name):
 
 def reload_macro(filename):
     get_ipython().magic("%run -i ~/.ipython/profile_collection/startup/" + filename)
-
