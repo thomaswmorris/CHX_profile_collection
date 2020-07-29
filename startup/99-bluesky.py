@@ -1,4 +1,5 @@
 import bluesky.plans as bp
+import os.path
 
 def detselect(detector_object, suffix="_stats1_total"):
     """Switch the active detector and set some internal state"""
@@ -300,7 +301,8 @@ class SerializerHack(Serializer):
         return doc
 
 
-directory = '/home/xf11id/specfiles/'
+## directory = '/home/xf11id/specfiles/'
+directory = os.path.expanduser("~") + "/specfiles/"
 prefix = 'chx_spec_2019_08_14'
 
 
