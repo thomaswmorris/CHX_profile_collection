@@ -326,7 +326,7 @@ def new_spec_file(name):
     - name= xyz .spec will be added automatically
     calling sequence: new_spec_file(name='xyz')
     """
-    full_path=os.path.join(os.path.expanduser("~", "specfiles/", name, '.spec')
+    full_path = os.path.join(directory, f'{name}.spec')
     specpath = os.path.expanduser(fullpath)
     spec_cb = Serializer(directory, file_prefix=prefix)
     spec_cb.resource = lambda *x: None
