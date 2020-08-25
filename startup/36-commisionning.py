@@ -158,7 +158,8 @@ def count_saxs(type, fnum=1,  expt= 0.1, acqt = None, att_t = 1,
     BPMFeed(  xbpm_y= 'on' )
     
     if new_pos:
-        yield from bp.abs_set(diff.yh, diff.yh.user_readback.value + 0.05)    
+        target = (yield from rd(diff.yh.user_readback)) + 0.05
+        yield from bp.abs_set(diff.yh, target)
     yield from count( [eiger4m_single])
     #caput( eiger4m_save, False)
 
@@ -204,7 +205,8 @@ def count_gisaxs(type, fnum=1, acqt = 0.1, expt= 0.1,
     yield from bp.abs_set(diff.phh, phh)
     yield from bp.abs_set(eiger4m.cam.array_counter,0)
     if new_pos:
-        yield from bp.abs_set(diff.xh, diff.xh.user_readback.value + 0.05)
+        target = (yield from rd(diff.xh.user_readback)) + 0.05
+        yield from bp.abs_set(diff.xh, target)
         #yield from bp.abs_set(diff.yh, diff.yh.user_readback.value + 0.05)
 
 #    return None
@@ -254,12 +256,14 @@ def YAG_FastSh( yag='on', fs='on' ):
 
     if yag is 'on':
         #caput( yag_pos, 30)
-        if abs(foil_x.user_readback.value - (30))>=.3:
+        value = (yield from rd(foil_x.user_readback))
+        if abs(value - (30))>=.3:
             yield from bp.abs_set( foil_x.user_setpoint, 30 )
             sleep(20)
         print ('YAG is in the beam')
     else:
-        if abs(foil_x.user_readback.value - (-26))>=.3:
+        value = (yield from rd(foil_x.user_readback))
+        if abs(value - (-26))>=.3:
             yield from bp.abs_set( foil_x.user_setpoint, -26.0 )
             sleep(20)
         print ('Empty is in the beam')

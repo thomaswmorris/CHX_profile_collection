@@ -4,16 +4,21 @@ from tqdm import tqdm
 from bson import ObjectId
 import matplotlib.patches as mpatches
 from IPython.display import clear_output
-cli = pymongo.MongoClient(db.reg.config['host'])
+
+try:
+    cli = db.v2._run_start_collection.database.client
+except Exception:
+    cli = pymongo.MongoClient(db.reg.config['host'])
+
 samples_2 = cli.get_database('samples').get_collection('samples_2')
 data_acquisition_collection = cli.get_database('samples').get_collection('data_acquisition_collection')
 beamline_pos = cli.get_database('samples').get_collection('beamline_pos')
 from databroker import Broker                                                   
 #db = Broker.named('temp')  # for real applications, 'temp' would be 'chx' 
 print('available databases:')
-print(cli.database_names())
+print(cli.list_database_names())
 print('\n available collection in database samples:')
-print(cli.samples.collection_names())
+print(cli.samples.list_collection_names())
 
 
 def update_beamline_pos(position_key='none',interactive=True):
