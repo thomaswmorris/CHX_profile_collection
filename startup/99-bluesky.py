@@ -276,7 +276,6 @@ import suitcase.specfile
 
 def spec_factory(name, doc):
     spec_cb = Serializer(spec_factory.directory, file_prefix=spec_factory.file_prefix, flush=True)
-    spec_cb(name, doc)
     return [spec_cb], []
 
 spec_factory.directory = '/home/xf11id/specfiles/'
