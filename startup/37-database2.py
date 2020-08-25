@@ -16,9 +16,9 @@ beamline_pos = cli.get_database('samples').get_collection('beamline_pos')
 from databroker import Broker                                                   
 #db = Broker.named('temp')  # for real applications, 'temp' would be 'chx' 
 print('available databases:')
-print(cli.database_names())
+print(cli.list_database_names())
 print('\n available collection in database samples:')
-print(cli.samples.collection_names())
+print(cli.samples.list_collection_names())
 
 
 def update_beamline_pos(position_key='none',interactive=True):
