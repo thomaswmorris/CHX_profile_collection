@@ -390,7 +390,7 @@ def eiger4m_series(expt=.1,acqp='auto',imnum=5,comment=''):
     RE.md['data path']=idpath
     RE.md['sequence id']=str(seqid)
     RE.md['transmission']=att.get_T()
-    RE.md['diff_yh']=str(round(diff.yh.user_readback,4))
+    RE.md['diff_yh']=str(round(diff.yh.user_readback.get(), 4))
     ## add experiment specific metadata:
     #RE.md['T_yoke']=str(caget('XF:11IDB-ES{Env:01-Chan:C}T:C-I'))
     #RE.md['T_sample']=str(caget('XF:11IDB-ES{Env:01-Chan:D}T:C-I'))
