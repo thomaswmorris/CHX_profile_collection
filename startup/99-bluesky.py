@@ -281,7 +281,8 @@ def spec_factory(name, doc):
 spec_factory.directory = '/home/xf11id/specfiles/'
 # Initialize the filename to today's date.
 import time
-spec_factory.file_prefix = f'chx_spec_{time.strftime('%Y_%m_%d')}'
+#spec_factory.file_prefix = f'chx_spec_{time.strftime('%Y_%m_%d')}'
+spec_factory.file_prefix = 'chx_spec_'+time.strftime('%Y_%m_%d')
 
 
 run_router = RunRouter([spec_factory])
