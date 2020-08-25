@@ -1,4 +1,5 @@
 import bluesky.plans as bp
+import os.path
 
 def detselect(detector_object, suffix="_stats1_total"):
     """Switch the active detector and set some internal state"""
@@ -301,4 +302,3 @@ def new_spec_file(name):
 
 def reload_macro(filename):
     get_ipython().magic("%run -i ~/.ipython/profile_collection/startup/" + filename)
-
