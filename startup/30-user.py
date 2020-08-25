@@ -12,7 +12,7 @@ from matplotlib import cm
 
 def md_reset(  ):
     sid = RE.md['scan_id']
-    RE.md =  {'beamline_id': 'CHX', 'scan_id': sid, 'user': 'CHX', 'run': '2018-3', 'owner': 'CHX', 'sample': 'N.A.'}
+    RE.md.update({'beamline_id': 'CHX', 'scan_id': sid, 'user': 'CHX', 'run': '2018-3', 'owner': 'CHX', 'sample': 'N.A.'})
     
 
 def get_beam_center_update( uid = -1, threshold = 200  ):
