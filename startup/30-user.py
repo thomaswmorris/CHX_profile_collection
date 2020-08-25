@@ -161,9 +161,9 @@ def change_motor_name( device):
             getattr(device, k).readback.name = getattr(device, k).name
 
 
-
-for motors in [ diff, bpm2, mbs, dcm, tran, s1, s2, s4]:
+for motors in [diff, bpm2, mbs, dcm, tran, s1, s2, s4]:
     change_motor_name( motors )
+
     
 
     
@@ -504,10 +504,12 @@ def prep_series_feedback():
     fast_sh.open()
     yield from bps.sleep(.5)
     #RE(mv(hdm_feedback_selector, 0)) # turn off epics pid feedback on HDM encoder    
-    caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)
-    caput('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP',1)
+    #caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)  # swapped: switch off encoder feedback after starting feedback on the BPM
     caput('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP',1)
-    yield from bps.sleep(.5)   
+    caput('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP',1)
+    yield from bps.sleep(.5)
+    caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)
+    yield from bps.sleep(.5)
     #RE(mv(bpm2_feedback_selector_a, 1))
     
 def trigger_ready():
@@ -565,7 +567,7 @@ def wait_for_motor(dets, motor, target, threshold, start_move=False, md=None):
     
     
 # Lutz's test Nov 08 start
-def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False):
+def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,*argv, **kwargs):
     """
     det='eiger1m' / 'eiger4m' / 'eiger500k'
     shutter_mode='single' / 'multi'
@@ -593,13 +595,33 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     #timing delay between calling series and start of data acquisition:
     #caput('XF:11ID-CT{ES:1}bo2',1)
     #trigger_pv='XF:11ID-CT{ES:1}bi3'
-    trigger_pv = 'XF:11ID-CT{M1}bi4'
+    #trigger_pv = 'XF:11ID-CT{M1}bi4' # standard, used for 3D printing
+    trigger_pv = 'XF:11IDB-ES{IO:1}DI:1-Sts'   # digitial input DI0 -> used e.g. for Linkam trigger 
     trigger_PV=EpicsSignal(trigger_pv,name='trigger_PV')
     
     if PV_trigger and position_trigger:
       raise series_Exception('error: Cannot trigger both at PV signal and motor position -> chose one!')
     
     print('start of series: '+time.ctime())
+    
+    
+    PV_dict={'eiger1m':'Eig1M','eiger4m':'Eig4M','eiger500k':'Eig500k'}
+    if 'save_files' in kwargs.keys():  # added: option to save/not save files
+        save_files= kwargs['save_files']
+    else:
+        save_files=True
+        
+    if save_files:
+        caput('XF:11IDB-ES{Det:%s}cam1:FWEnable'%PV_dict[det],1)
+    elif not save_files:
+        caput('XF:11IDB-ES{Det:%s}cam1:FWEnable'%PV_dict[det],0)
+        auto_compression=False
+        print('WARNING: NOT SAVING FILES!!! ')
+        comment='WARNING: NOT SAVING FILES!!! '+comment
+    else:
+        raise series_Exception('error: unknown optional keyword argment "%s" for "save_file". Valid options are True/False'%kwargs['save_files'])
+    
+    
     if acqp=='auto':
         acqp=expt
     if det == 'eiger1m':    #get Dectris sequence ID
@@ -745,13 +767,19 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     if OAV_mode == 'none':
         detlist=[detector]
     elif OAV_mode == 'single':
-        detlist=[detector,OAV_writing] 
+        if save_files:
+            detlist=[detector,OAV_writing] 
+        else:
+            detlist=[detector,OAV] 
         #detlist=[detector,OAV] ## NOT saving...for debugging only
         org_pt=caget('XF:11IDB-BI{Cam:10}cam1:AcquirePeriod_RBV')
         org_ni=caget('XF:11IDB-BI{Cam:10}cam1:NumImages_RBV')
         caput('XF:11IDB-BI{Cam:10}cam1:NumImages',2,wait=True)  ## if switching on light, first image will be dark
     elif OAV_mode == 'start_end':
-        detlist=[detector,OAV_writing] 
+        if save_files:
+            detlist=[detector,OAV_writing] 
+        else:
+            detlist=[detector,OAV] 
         #detlist=[detector,OAV] ## NOT saving...for debugging only
         org_pt=caget('XF:11IDB-BI{Cam:10}cam1:AcquirePeriod_RBV')
         org_ni=caget('XF:11IDB-BI{Cam:10}cam1:NumImages_RBV')        
@@ -759,7 +787,10 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
         caput('XF:11IDB-BI{Cam:10}cam1:NumImages',2,wait=True)
         caput('XF:11IDB-BI{Cam:10}cam1:AcquirePeriod',pt,wait=True)
     elif OAV_mode == 'movie':
-        detlist=[detector,OAV_writing] 
+        if save_files:
+            detlist=[detector,OAV_writing] 
+        else:
+            detlist=[detector,OAV] 
         #detlist=[detector,OAV] ## NOT saving...for debugging only
         org_pt=caget('XF:11IDB-BI{Cam:10}cam1:AcquirePeriod_RBV')
         org_ni=caget('XF:11IDB-BI{Cam:10}cam1:NumImages_RBV')
@@ -810,7 +841,7 @@ class series_Exception(Exception):
   
   
 # heating with sample chamber, using both heaters:
-def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on'):       # MADE MAJOR CHANGES: NEEDS TESTING!!! [01/23/2017 LW]
+def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on',check_vac=True):       # MADE MAJOR CHANGES: NEEDS TESTING!!! [01/23/2017 LW]
     """
     heating with sample chamber, using both heaters
     macro maintains 40deg difference between both heaters to have a temperature gradient for stabilization
@@ -818,7 +849,16 @@ def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on'):       # M
     heat_ramp: ramping speed [deg.C/min] on heating. Currently a ramp with max 3deg.C/min will be enforced!
     cool_ramp: ramping speed [deg.C/min] on cooling. '0' -> ramp off!
     log_entry: 'on' / 'off'  -> make olog entry when changing temperature ('try', ignored, if Olog is down...)
+    check_vac: True/False -> checks for vacuum level on hard-coded PV for temperatures > 50C or <10C
     """
+    vac_check_PV='XF:11IDB-VA{Samp:1-TCG:1}P-I'
+    if check_vac:
+        vac=caget(vac_check_PV)
+        if vac > .1:
+            raise ValueError('vacuum in sample chamber needs to be better than .1 for T>50C or T<10C!')
+        else:
+            print('vacuum in sample chamber: %s Torr -> passed vacuum check!'%vac)
+    
     if heat_ramp > 7.:
         heat_ramp=7.
     else: pass

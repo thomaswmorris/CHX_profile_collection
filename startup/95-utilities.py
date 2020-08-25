@@ -252,6 +252,9 @@ def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off'):
     [x,y,t]=get_data(uid,field=field, intensity_field=intensity_field, det=None, debug=False)  #need to re-write way to get data
     x=np.array(x)
     y=np.array(y)
+
+    x = np.nan_to_num(x)
+    y = np.nan_to_num(y)
     
     PEAK=x[np.argmax(y)]
     PEAK_y=np.max(y)

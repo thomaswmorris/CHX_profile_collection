@@ -274,45 +274,16 @@ import suitcase.specfile
 #spec_cb = DocumentToSpec('/home/xf11id/specfiles/testing.spec')
 
 
-class MultiFileManagerHack(MultiFileManager):
-
-    def open(self, label, postfix, mode, **kwargs):
-        mode = 'a' if mode=='x' else mode
-        f = super().open(label, postfix, mode, **kwargs)
-        return f
-
-    def reserve_name(self, label, postfix):
-        name = (self._directory / Path(postfix)).expanduser().resolve()
-        if name in self._reserved_names:
-            return name
-        return super().reserve_name(label, postfix)
-
-
-class SerializerHack(Serializer):
-    
-    def event_page(self, doc):
-        for event in event_model.unpack_event_page(doc):
-            self.event(event)
-        return doc
-
-    def event(self, doc):
-        doc = super().event(doc)
-        self._file.flush()
-        return doc
-
-
-## directory = '/home/xf11id/specfiles/'
-directory = os.path.join(os.path.expanduser("~"), "specfiles/")
-prefix = 'chx_spec_2019_08_14'
-
-
 def spec_factory(name, doc):
-    #spec_cb = SerializerHack(MultiFileManagerHack(directory, allowed_modes=('x','a')),
-    #                 file_prefix=prefix)
-    spec_cb = Serializer(MultiFileManagerHack(directory, allowed_modes=('x','a')),
-                     file_prefix=prefix, flush=True)
+    spec_cb = Serializer(spec_factory.directory, file_prefix=spec_factory.file_prefix, flush=True)
     spec_cb(name, doc)
     return [spec_cb], []
+
+spec_factory.directory = '/home/xf11id/specfiles/'
+# Initialize the filename to today's date.
+import time
+#spec_factory.file_prefix = f'chx_spec_{time.strftime('%Y_%m_%d')}'
+spec_factory.file_prefix = 'chx_spec_'+time.strftime('%Y_%m_%d')
 
 
 run_router = RunRouter([spec_factory])
@@ -326,12 +297,7 @@ def new_spec_file(name):
     - name= xyz .spec will be added automatically
     calling sequence: new_spec_file(name='xyz')
     """
-    full_path = os.path.join(directory, f'{name}.spec')
-    specpath = os.path.expanduser(fullpath)
-    spec_cb = Serializer(directory, file_prefix=prefix)
-    spec_cb.resource = lambda *x: None
-    spec_cb.datum = lambda *x: None
-    print('Using new spec-file: ',fullpath)
+    spec_factory.file_prefix = name
  
 
 def reload_macro(filename):
