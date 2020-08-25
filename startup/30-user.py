@@ -7,6 +7,7 @@ from math import radians
 from IPython.core.magic import Magics, magics_class, line_magic
 from bluesky import RunEngine
 from bluesky.utils import ProgressBarManager
+from bluesky.plan_stubs import rd
 from matplotlib import cm
 
 
@@ -96,8 +97,8 @@ def Update_direct_bc( detxy=[134.9713, -132.6926], saxs_theta=0.0, bc = [ 1131, 
     		     500k for eiger 500K    
     '''
     detector_distance = caget("XF:11IDB-ES{Det:Eig4M}cam1:DetDist")
-    dx =   saxs_detector.x.user_readback.value
-    dy =   saxs_detector.y.user_readback.value
+    dx = (yield from rd(bps.saxs_detector.x.user_readback))
+    dy = (yield from rd(saxs_detector.y.user_readback))
     current_theta = caget("XF:11IDB-ES{Tbl:SAXS-Ax:Theta}Mtr.RBV")
     angle_shift = (current_theta-saxs_theta)*np.pi/180.0*(detector_distance*1000.0)
     dx = dx+angle_shift
@@ -389,7 +390,7 @@ def eiger4m_series(expt=.1,acqp='auto',imnum=5,comment=''):
     RE.md['data path']=idpath
     RE.md['sequence id']=str(seqid)
     RE.md['transmission']=att.get_T()
-    RE.md['diff_yh']=str(round(diff.yh.user_readback.value,4))
+    RE.md['diff_yh']=str(round(diff.yh.user_readback,4))
     ## add experiment specific metadata:
     #RE.md['T_yoke']=str(caget('XF:11IDB-ES{Env:01-Chan:C}T:C-I'))
     #RE.md['T_sample']=str(caget('XF:11IDB-ES{Env:01-Chan:D}T:C-I'))
@@ -518,7 +519,7 @@ def wait_for_pv(dets, ready_signal,feedback_on=False ,md=None):
     if md is None:
         md = {}
     def still_waiting():
-        return ready_signal.value != 1        
+        return ready_signal.get() != 1
     def wait_for_motor_to_cross_threshold():
         return motor.postion < threshold
     @bpp.stage_decorator(dets)
