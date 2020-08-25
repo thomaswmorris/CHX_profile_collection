@@ -55,5 +55,6 @@ RE.md = PersistentDict(runengine_metadata_dir)
 
 # Turn down super-verbose logging for caproto
 import logging
-logging.getLogger('caproto').setLevel('ERROR')
-logging.getLogger('caproto.ch').setLevel('ERROR')
+# logging.getLogger('caproto').setLevel('ERROR')
+# logging.getLogger('caproto.ch').setLevel('ERROR')
+logging.getLogger('ophyd').setLevel('WARNING')
