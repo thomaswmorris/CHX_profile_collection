@@ -507,9 +507,9 @@ def prep_series_feedback():
     #caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)  # swapped: switch off encoder feedback after starting feedback on the BPM
     caput('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP',1)
     caput('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP',1)
-    yield from bps.sleep(.5)
+    yield from bps.sleep(.1)
     caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)
-    yield from bps.sleep(.5)
+    yield from bps.sleep(.25)
     #RE(mv(bpm2_feedback_selector_a, 1))
     
 def trigger_ready():
@@ -1476,7 +1476,7 @@ def auto_vent():
         vent_complete=False
         while not vent_complete:
             RE(sleep(.5))
-            if caget(vac_pv) >= 700:
+            if caget(vac_pv) >= 670:
                 vent_complete=True
         caput(gn2_close,1)
         print('venting procedure complete!')
