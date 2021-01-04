@@ -513,7 +513,9 @@ def prep_series_feedback():
     #RE(mv(bpm2_feedback_selector_a, 1))
     
 def trigger_ready():
-    caput('XF:11ID-CT{M1}bi3',1)
+    #caput('XF:11ID-CT{M1}bi3',1) # for printer
+    caput('XF:11ID-CT{ES:1}bi2',1) # fake for beamline
+
     
 def wait_for_pv(dets, ready_signal,feedback_on=False ,md=None):
     if md is None:
@@ -562,12 +564,200 @@ def wait_for_motor(dets, motor, target, threshold, start_move=False, md=None):
          yield from bps.wait(group='the_motor') 
      yield from inner() 
 
+
+def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,md_import={}):
+    """
+    det='eiger1m' / 'eiger4m' / 'eiger500k'
+    shutter_mode='single' / 'multi'
+    expt: exposure time [s]
+    acqp: acquire period [s] OR 'auto': acqp=expt
+    imnum: number of frames
+    feedback_on=False, (True): open fast shutter, switch off feedback on HDM Epics loop, switch on feedback on DBPM
+    analysis='' gives a hint to jupyter pipeline to run a certain analysis, e.g. analysis='iso' uses isotropic Q-rings, analysis='qphi' uses phi-sliced Q-rings, etc.
+    comment: free comment (string) shown in Olog and attached as RE.md['Measurement']=comment
+    update 01/23/2017:  for imnum <100, set chunk size to 10 images to force download. Might still cause problems under certain conditions!!
+    yugang add use_xbpm option at Sep 13, 2017 for test fast shutter by using xbpm
+    OAV_mode added by LW 01/18/2018: 'none': no image data recorded, 'single': record single image at start of Eiger series, 'start_end': record single image at start and end of Eiger series, 'movie': take contineous stream of images for approximate duration of Eiger series
+    eiger500k added by LW 03/20/2018, Eiger500k multi shutter NOT yet implemented,
+              debug by YG 03/22/2018, fix a bug and add Eiger500K multi mode
+    03/26/2018: added hook 'analysis' for jupyter pipeline
+    10/27/2018: added option to add acquired uid to list for automatic compression:
+    auto_compression=False/True, True: add uid to document "general list" in collection "data_acquisition_collection" in database 'samples'
+    database access is done in a 'try', to avoid errors in case of problems with database access
+    06/03/2019: added trigger via external PV or motor position, with pre-staging of detectors
+    PV_trigger = False -> previous behavior, PV_trigger = True: write metadata, stage detector(s), wait for PV trigger signal
+    position_trigger = False -> previous behavior
+    position_trigger={'motor':diff.xh,'target':-.2,'threshold':.1,'start_move':False} -> trigger when motor position within threshold,
+    start_move=False -> don't move motor from series, start_move=True: move motor from series
+    10/02/2020: collect series specific md in dictionary and use md in count to capture it; add possibility to pass md dictionary to series; 
+    add auto-comment: comment='descr1'+'AUTO_COMMENT'+'descr2' -> 'descr1 expt=xxxs, imnum=yyyy, Trans= zzz sample: RE.md['sample'] descr2    
+    """
+        
+    # Define trigger PV (use is optional)
+    #caput('XF:11ID-CT{ES:1}bo2',1)
+    #trigger_pv='XF:11ID-CT{ES:1}bi3'
+    #trigger_pv = 'XF:11ID-CT{M1}bi4' # standard, used for 3D printing
+    #trigger_pv = 'XF:11IDB-ES{IO:1}DI:1-Sts'   # digitial input DI0 -> used e.g. for Linkam trigger
+    trigger_pv='XF:11ID-CT{ES:1}bi1' 
+    #trigger_pv='XF:11IDB-ES{IO}DI:4-Sts' #linkam trigger
+    trigger_PV=EpicsSignal(trigger_pv,name='trigger_PV')
+    
+    if PV_trigger and position_trigger:
+      raise series_Exception('error: Cannot trigger both at PV signal and motor position -> chose one!')
+    
+    print('start of series: '+time.ctime())
+    
+    # check if acquire period should be equal to exposure time:
+    if acqp=='auto':
+        acqp=expt
+    
+    #check for maxiumum frame rates (and correct if higher...might be redundant to what is done on the Dectris driver level, but ensures consistent md):
+    freq_dict={'eiger1m':.00034,'eiger4m':.00134,'eiger500k':.000112}
+    if acqp < freq_dict[det]:
+        acqp=freq_dict[det]
+    
+    PV_dict={'eiger1m':'Eig1M','eiger4m':'Eig4M','eiger500k':'Eig500K'}
+    
+    # get path and sequence ID for md, reset image counter:
+    seqid=caget('XF:11IDB-ES{Det:%s}cam1:SequenceId'%PV_dict[det])+1 #get Dectris sequence ID
+    idpath=caget('XF:11IDB-ES{Det:%s}cam1:FilePath'%PV_dict[det],' {"longString":true}')
+    
+    # remove files from detector, reset image counter:
+    if caget('XF:11IDB-ES{Det:%s}cam1:FWAutoRemove_RBV'%PV_dict[det]) != 1:
+        caput('XF:11IDB-ES{Det:%s}cam1:FWClear'%PV_dict[det],1,wait=True)    #remove files from the detector
+    caput('XF:11IDB-ES{Det:%s}cam1:ArrayCounter'%PV_dict[det],0) # set image counter to '0'
+    
+    # set HDF5 file chunk size:
+    if imnum < 10:
+            caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],1)
+    elif imnum < 500:                                                            
+            caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],10)
+    else: 
+            caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],100)
+
+
+    if shutter_mode=='single':
+        if det == 'eiger1m':
+            detector=eiger1m_single
+        if det == 'eiger4m':
+            detector=eiger4m_single
+        if det == 'eiger500k':            
+            detector=eiger500k_single
+
+        detector.cam.acquire_time.value=expt       # setting up exposure for eiger500k/1m/4m_single
+        detector.cam.acquire_period.value=acqp
+        detector.cam.num_images.value=imnum
+        
+    else:
+        raise series_Exception('error: this macro currently only supports single shutter mode')
+
+    #print('adding experiment specific metadata: '+time.ctime())
+    ## add series specific metadata:
+    
+    if caget('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP') == 1 or feedback_on == True:
+        fx='on'
+    elif caget('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP') == 0:
+        fx='off'
+    if caget('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP') == 1 or feedback_on == True:
+        fy='on'
+    elif caget('XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP') == 0: 
+        fy='off'
+    
+    # create series specific md dictionary
+    transmission=att.get_T()*att2.get_T()
+    T_yoke=str(caget('XF:11IDB-ES{Env:01-Chan:C}T:C-I'))
+    T_sample=str(caget('XF:11IDB-ES{Env:01-Chan:D}T:C-I'))
+    md_series={'exposure time':str(expt), 'acquire period':str(acqp),'shutter mode':shutter_mode,'number of images':str(imnum),'data path':idpath,'sequence id':str(seqid),
+                  'transmission':transmission,'OAV_mode':OAV_mode,'T_yoke':T_yoke,'T_sample':T_sample,'analysis':analysis,'feedback_x':fx,'feedback_y':fy}
+    ## end series specific metadata
+    ## merge with md_import, dublicate keys will be converted to string and add '_' in md_import
+    double_keys=list(set(md_series).intersection(md_import))
+    for dk in double_keys:
+        md_import['%s_'%dk]=md_import[dk]
+    md_import.update(md_series)
+    
+    # generate automatic comment for olog   
+    if 'AUTO_COMMENT' in comment:
+        ac='%ss x %s fr. Trans:%s sample: %s'%(expt,imnum,transmission,RE.md['sample'])
+        cl=comment.split('AUTO_COMMENT')
+        if len(cl)==1:
+            if comment[0:12]=='AUTO_COMMENT': # format: auto_comment + custom comment
+                total_comment='%s %s'%(ac,cl[0])
+            else: total_comment='%s %s'%(cl[0],ac)  # format: custom comment + auto_comment
+        else: total_comment='%s %s %s'%(cl[0],ac,cl[1])
+    else: total_comment=comment
+    
+    print('taking data series: exposure time: '+str(expt)+'s,  period: '+str(acqp)+'s '+str(imnum)+'frames  shutter mode: '+shutter_mode)
+    print('Dectris sequence id: '+str(int(seqid)))
+    
+    
+    print('OAV_mode: '+OAV_mode)    ### ADDED OAV_mode HERE!
+    
+    if OAV_mode not in ['none','single','start_end','movie']:
+        raise series_Exception('error: OAV_mode needs to be none|single|start_end|movie...')
+    
+    if OAV_mode == 'none':
+        detlist=[detector]
+    else:
+        detlist=[detector,OAV_writing]
+        org_pt=OAV.cam.acquire_period.value 
+        org_ni=OAV.cam.num_images.value
+    
+    if OAV_mode == 'single':
+        OAV.cam.num_images.put(2,wait=True) ## if switching on light, first image will be dark
+    if OAV_mode == 'start_end': 
+        pt=(acqp)*imnum #period between two images to span Eiger series (exposure time for OAV image neglected)
+        OAV.cam.num_images.put(2,wait=True)
+        OAV.cam.acquire_period.put(pt,wait=True) 
+    if OAV_mode == 'movie':
+        
+        ni=acqp*imnum/OAV.cam.acquire_period.value
+        ni=ni+ni/10
+        OAV.cam.num_images.put(np.ceil(ni),wait=True)
+        
+    if use_xbpm:
+        caput( 'XF:11IDB-BI{XBPM:02}FaSoftTrig-SP',1,wait=True) #yugang add at Sep 13, 2017 for test fast shutter by using xbpm
+        print('Use XBPM to monitor beam intensity.')
+
+    if PV_trigger:
+      dets = detlist     
+      #RE(wait_for_pv(dets,trigger_PV,feedback_on=feedback_on,md=md_import),Measurement=total_comment)
+      print('md dictionary: %s'%md_import)
+      RE(wait_for_pv(dets,trigger_PV,feedback_on=feedback_on,md=md_import),Measurement=total_comment)
+    elif position_trigger:
+      dets = detlist     
+      RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'], feedback_on=feedback_on, md=md_import),Measurement=total_comment) 
+    else:
+      if feedback_on:
+        RE(prep_series_feedback())
+      RE(count(detlist,md=md_import),Measurement=total_comment)  ### TAKING DATA
+    
+    # setting image number and period back for OAV camera:
+    if OAV_mode != 'none':     
+        OAV.cam.num_images.put(org_ni)
+        OAV.cam.acquire_period.put(org_pt)
+    
+    ####### add acquired uid to database list for automatic compression #########
+    if auto_compression:
+        try:
+            uid_add=db[-1]['start']['uid']
+            uid_list=data_acquisition_collection.find_one({'_id':'general_list'})['uid_list']
+            uid_list.append(uid_add)
+            data_acquisition_collection.update_one({'_id': 'general_list'},{'$set':{'uid_list' : uid_list}})
+            print('Added uid %s to list for automatic compression!'%uid_add)
+        except:
+            print('Sorry, failed to add uid %s to list for automatic compression!'%uid_add)
+    else:
+        print('uid not added to database for automatic compression')
+    ############################################################################### THE END #########################
+
+
     
 
     
     
-# Lutz's test Nov 08 start
-def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,*argv, **kwargs):
+# Lutz's test Nov 08 start OBSOLETE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+def series_old(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,*argv, **kwargs):
     """
     det='eiger1m' / 'eiger4m' / 'eiger500k'
     shutter_mode='single' / 'multi'
@@ -892,11 +1082,11 @@ def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on',check_vac=T
             else: pass
         #caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',cool_ramp_on)        #switch ramp on/off as requested
         #caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',cool_ramp_on)
-        caput('XF:11IDB-ES{Env:01-Out:1}Val:Ramp-SP',cool_ramp)   # set ramp to requested value
-        caput('XF:11IDB-ES{Env:01-Out:2}Val:Ramp-SP',cool_ramp)
+        caput('XF:11IDB-ES{Env:01-Out:1}Val:Ramp-SP',cool_ramp,wait=True)   # set ramp to requested value
+        caput('XF:11IDB-ES{Env:01-Out:2}Val:Ramp-SP',cool_ramp,wait=True)
         RE(sleep(5))
-        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',cool_ramp_on)        #switch ramp on/off as requested
-        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',cool_ramp_on)
+        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',cool_ramp_on,wait=True)        #switch ramp on/off as requested
+        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',cool_ramp_on,wait=True)
         caput('XF:11IDB-ES{Env:01-Out:1}T-SP',273.15+Tsetpoint)    # setting channel C to Tsetpoint
         caput('XF:11IDB-ES{Env:01-Out:2}T-SP',233.15+Tsetpoint) # setting channel B to Tsetpoint-40C
     elif start_T<Tsetpoint:        #heating requested, ramp on
@@ -908,19 +1098,21 @@ def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on',check_vac=T
             except:
                 pass
         else: pass
-        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',0)  # ramp off
-        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',0)
+        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',0,wait=True)  # ramp off
+        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',0,wait=True)
         caput('XF:11IDB-ES{Env:01-Out:1}T-SP',273.15+start_T)    # start from current temperature
         caput('XF:11IDB-ES{Env:01-Out:2}T-SP',273.15+start_T2)
-        caput('XF:11IDB-ES{Env:01-Out:1}Val:Ramp-SP',heat_ramp)   # set ramp to selected value or allowed maximum
-        caput('XF:11IDB-ES{Env:01-Out:2}Val:Ramp-SP',heat_ramp)
+        caput('XF:11IDB-ES{Env:01-Out:1}Val:Ramp-SP',heat_ramp,wait=True)   # set ramp to selected value or allowed maximum
+        caput('XF:11IDB-ES{Env:01-Out:2}Val:Ramp-SP',heat_ramp,wait=True)
+        #print('flashed yet??')
+        #RE(sleep(5))
         caput('XF:11IDB-ES{Env:01-Out:1}Out:MaxI-SP',1.0) # force max current to 1.0 Amp
         caput('XF:11IDB-ES{Env:01-Out:2}Out:MaxI-SP',.7)
         caput('XF:11IDB-ES{Env:01-Out:1}Val:Range-Sel',3) # force heater range 3 -> should be able to follow 2deg/min ramp
         caput('XF:11IDB-ES{Env:01-Out:2}Val:Range-Sel',3)
         RE(sleep(5))
-        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',1)  # ramp on
-        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',1)
+        caput('XF:11IDB-ES{Env:01-Out:1}Enbl:Ramp-Sel',1,wait=True)  # ramp on
+        caput('XF:11IDB-ES{Env:01-Out:2}Enbl:Ramp-Sel',1,wait=True)
         caput('XF:11IDB-ES{Env:01-Out:1}T-SP',273.15+Tsetpoint)    # setting channel C to Tsetpoint
         caput('XF:11IDB-ES{Env:01-Out:2}T-SP',233.15+Tsetpoint) # setting channel B to Tsetpoint-40C
 

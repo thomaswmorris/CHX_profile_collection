@@ -444,7 +444,7 @@ def get_archive_pvlist_values(PVs, labels, start_time, end_time,
     '''
     
     from channelarchiver import Archiver
-    archiver = Archiver('http://xf11id-ca.cs.nsls2.local/cgi-bin/ArchiveDataServer.cgi')
+    archiver = Archiver('http://xf11id-ca.nsls2.bnl.local/cgi-bin/ArchiveDataServer.cgi')
     archiver_acc = Archiver('http://ca.cs.nsls2.local:8888/cgi-bin/ArchiveDataServer.cgi')
 
     #archiver.scan_archives()
@@ -483,7 +483,7 @@ def get_archive_pv_value(PV, label, start_time, end_time,scan_archives=True,
 
     if archiver  is None:
         from channelarchiver import Archiver
-        archiver = [Archiver('http://xf11id-ca.cs.nsls2.local/cgi-bin/ArchiveDataServer.cgi')]
+        archiver = [Archiver('http://xf11id-ca.nsls2.bnl.local/cgi-bin/ArchiveDataServer.cgi')]
         #if scan_archives:
     #archiver.scan_archives()
     if label[:3] == 'Acc':arch=   archiver[1]

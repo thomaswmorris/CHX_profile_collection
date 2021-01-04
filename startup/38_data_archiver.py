@@ -21,7 +21,7 @@ data
        '''
     
     from channelarchiver import Archiver
-    archiver = Archiver('http://xf11id-ca.cs.nsls2.local/cgi-bin/ArchiveDataServer.cgi')
+    archiver = Archiver('http://xf11id-ca.nsls2.bnl.local/cgi-bin/ArchiveDataServer.cgi')
 
     import numpy as np
     import pandas as pd

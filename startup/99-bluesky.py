@@ -85,7 +85,7 @@ def E_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=elm.sum_
 	elif gapmode =="auto":
 		gap=list(xf.get_gap(energy,harm))  
 		print('using calculated gap values from xfuncs!')
-	gap = np.array(gap)*1000
+	gap = np.array(gap)#*1000 %removed factor 1000 (LW, 10/22/20)
 	inner = cycler(dcm.b,th_B)+cycler(ivu_gap,gap)
 	#plan = PlanND([det],inner)
 	plan = scan_nd([det],inner)

@@ -111,8 +111,9 @@ class StandardProsilicaWithTIFF(StandardProsilica):
 class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/XF11ID/data/%Y/%m/%d/',
-               root='/XF11ID/data')
+               write_path_template='/nsls2/xf11id1/data/%Y/%m/%d/',
+               root='/nsls2/xf11id1/data')
+               #root='/XF11ID/data')
 
 class EigerSimulatedFilePlugin(Device, FileStoreBase):
     sequence_id = ADComponent(EpicsSignalRO, 'SequenceId')
