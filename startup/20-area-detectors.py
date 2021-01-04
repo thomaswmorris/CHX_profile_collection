@@ -541,11 +541,15 @@ def set_eiger_defaults(eiger):
 # Eiger 500k using internal trigger
 eiger500k_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
 set_eiger_defaults(eiger500k_single)
+# AD v3.3+ config:
+eiger500k_single.cam.ensure_nonblocking()
 
 # Eiger 1M using internal trigger
 eiger1m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig1M}',
                                     name='eiger1m_single')
 set_eiger_defaults(eiger1m_single)
+# AD v3.3+ config:
+eiger1m_single.cam.ensure_nonblocking()
 
 # Eiger 4M using internal trigger
 eiger4m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig4M}',
