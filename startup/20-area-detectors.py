@@ -537,12 +537,14 @@ def set_eiger_defaults(eiger):
     eiger.cam.configuration_attrs = ['acquire_time', 'acquire_period',
                                      'num_images']
 
-
-# Eiger 500k using internal trigger
-eiger500k_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
-set_eiger_defaults(eiger500k_single)
-# AD v3.3+ config:
-eiger500k_single.cam.ensure_nonblocking()
+try:
+    # Eiger 500k using internal trigger
+    eiger500k_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
+    set_eiger_defaults(eiger500k_single)
+    # AD v3.3+ config:
+    eiger500k_single.cam.ensure_nonblocking()
+except:
+    print('eiger500k not configured...')
 
 # Eiger 1M using internal trigger
 eiger1m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig1M}',
@@ -558,10 +560,12 @@ set_eiger_defaults(eiger4m_single)
 # AD v3.3+ config:
 eiger4m_single.cam.ensure_nonblocking()
 
-
-# Eiger 500K using fast trigger assembly
-eiger500k = EigerFastTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k')
-set_eiger_defaults(eiger500k)
+try:
+    # Eiger 500K using fast trigger assembly
+    eiger500k = EigerFastTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k')
+    set_eiger_defaults(eiger500k)
+except:
+    print('eiger500k not configured...')
 
 # Eiger 1M using fast trigger assembly
 eiger1m = EigerFastTrigger('XF:11IDB-ES{Det:Eig1M}', name='eiger1m')
@@ -582,8 +586,11 @@ set_eiger_defaults(eiger4m_manual)
 eiger1m_manual = EigerManualTrigger('XF:11IDB-ES{Det:Eig1M}', name='eiger1m_single')
 set_eiger_defaults(eiger1m_manual)
 
-eiger500k_manual = EigerManualTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k_single')
-set_eiger_defaults(eiger500k_manual)
+try:
+    eiger500k_manual = EigerManualTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k_single')
+    set_eiger_defaults(eiger500k_manual)
+except:
+    print('eiger500k not configured...')
 
 def dscan_manual(dets, motor, start, stop, num):
     for det in dets:
