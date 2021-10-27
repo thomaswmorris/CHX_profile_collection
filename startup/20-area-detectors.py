@@ -159,9 +159,10 @@ class EigerSimulatedFilePlugin(Device, FileStoreBase):
 
     def describe(self,):
         ret = super().describe()
-        cur_bits = self.parent.cam.bit_depth.get()
-        dtype_str_map = {8: '|u1', 16: '<u2', 32:'<u4'}
-        ret[self.parent._image_name]['dtype_str'] = dtype_str_map[cur_bits]
+        if hasattr(self.parent.cam, 'bit_depth'):
+            cur_bits = self.parent.cam.bit_depth.get()
+            dtype_str_map = {8: '|u1', 16: '<u2', 32:'<u4'}
+            ret[self.parent._image_name]['dtype_str'] = dtype_str_map[cur_bits]
         return ret
 
 
@@ -221,7 +222,8 @@ class EigerBase(AreaDetector):
 class EigerDetectorCamV33(AreaDetectorCam):
     '''This is used to update the Eiger detector to AD33.
     '''
-    bit_depth = Cpt(EpicsSignalRO, 'BitDepthImage_RBV', kind='config')
+    firmware_version = Cpt(EpicsSignalRO, 'FirmwareVersion_RBV', kind='config')
+
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
                            string=True, kind='config')
 
@@ -238,6 +240,8 @@ class EigerDetectorCamV33(AreaDetectorCam):
             if hasattr(cpt, 'ensure_nonblocking'):
                 cpt.ensure_nonblocking()
 
+class NewEigerDetectorCamV33(EigerDetectorCamV33):
+    bit_depth = Cpt(EpicsSignalRO, 'BitDepthImage_RBV', kind='config')
 
 class EigerBaseV33(EigerBase):
     cam = Cpt(EigerDetectorCamV33, 'cam1:')
@@ -374,7 +378,8 @@ class EigerSingleTrigger_AD37(SingleTrigger, EigerBaseV33):
             ret = super().describe(*args, **kwargs)
             return ret
 
-
+class EigerSingleTrigger_AD37_V2(EigerSingleTrigger_AD37):
+    cam = Cpt(NewEigerDetectorCamV33, 'cam1:')
 
 class FastShutterTrigger(Device):
     """This represents the fast trigger *device*.
@@ -547,12 +552,13 @@ def set_eiger_defaults(eiger):
 
 try:
     # Eiger 500k using internal trigger
-    eiger500k_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
+    eiger500k_single = EigerSingleTrigger_AD37_V2('XF:11IDB-ES{Det:Eig500K}', name='eiger500K_single')
     set_eiger_defaults(eiger500k_single)
     # AD v3.3+ config:
     eiger500k_single.cam.ensure_nonblocking()
 except Exception:
     print('eiger500k not configured...')
+    raise
 
 # Eiger 1M using internal trigger
 eiger1m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig1M}',
