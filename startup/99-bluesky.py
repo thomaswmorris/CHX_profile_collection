@@ -56,7 +56,7 @@ def move_E(energy, gap=[], xtal="Si111cryo", gapmode="auto", harm=5):
 			print('using manually entered gap value...')
 		else: print('error: function accepts only one energy and one gap value at a time')
 	elif gapmode =="auto":
-		gap=xf.get_gap(energy,harm)*1000
+		gap=xf.get_gap(energy,harmonic=harm)
 		print('using calculated gap value from xfuncs!')
 	print('moving ivu_gap to '+str(gap)[:6]+'mm   and dcm.b to '+str(th_B)[:6]+'deg')
 	RE(mov(ivu_gap,gap,dcm.b,th_B))
@@ -83,7 +83,7 @@ def E_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=elm.sum_
 			print('using manually entered gap values...')
 		else: print('error: length of manually entered list of gap value does not match number of energy points')
 	elif gapmode =="auto":
-		gap=list(xf.get_gap(energy,harm))  
+		gap=list(xf.get_gap(energy,harmonic=harm))  
 		print('using calculated gap values from xfuncs!')
 	gap = np.array(gap)#*1000 %removed factor 1000 (LW, 10/22/20)
 	inner = cycler(dcm.b,th_B)+cycler(ivu_gap,gap)
@@ -91,6 +91,14 @@ def E_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=elm.sum_
 	plan = scan_nd([det],inner)
 	#RE(plan, [LiveTable([dcm.b,ivu_gap,det]),LivePlot(x='dcm_b',y=det.name,fig = plt.figure())])
 	RE(plan, [LiveTable([dcm.b,ivu_gap,det]),LivePlot(x='dcm_b',y=det.name,fig = plt.figure())])
+
+
+def match_IVU_energy(harm=7,xtal='Si111cryo'):
+	"""
+	function to move the IVU gap to match the current DCM energy, as defined by its Bragg angle
+	by LW 2021
+	"""
+	RE(mv(ivu_gap,xf.get_gap(xf.get_EBragg(xtal,theta_Bragg=-1*dcm.b.user_readback.value),harmonic=harm)[0]))
 
 
 def Energy_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=[eiger1m_single]): 
@@ -113,7 +121,7 @@ def Energy_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=[ei
 			print('using manually entered gap values...')
 		else: print('error: length of manually entered list of gap value does not match number of energy points')
 	elif gapmode =="auto":
-		gap=list(xf.get_gap(energy,harm))  
+		gap=list(xf.get_gap(energy,harmonic=harm))  
 		print('using calculated gap values from xfuncs!')
 		print(gap)
 	inner = cycler(dcm.b,th_B)+cycler(ivu_gap,gap)

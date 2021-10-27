@@ -206,13 +206,14 @@ from Maksim
     print('Scan ID: {}  Timestamp: {}'.format(scan_id, t))
     return scan, t
 
-def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off'):
+def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off',figure_number=999):
     '''
-    function to determine statistic on line profile (assumes either peak or erf-profile)
-    calling sequence: uid='-1',det='default',suffix='default',shift=.5)
-    det='default' -> get detector from metadata, otherwise: specify, e.g. det='eiger4m_single'
-    suffix='default' -> _stats1_total / _sum_all, otherwise: specify, e.g. suffix='_stats2_total'
-    shift: scale for peak presence (0.5 -> peak has to be taller factor 2 above background)
+    function to determine statistic on line profile (assumes either peak or erf-profile)\n
+    calling sequence: uid='-1',det='default',suffix='default',shift=.5)\n
+    det='default' -> get detector from metadata, otherwise: specify, e.g. det='eiger4m_single'\n
+    suffix='default' -> _stats1_total / _sum_all, otherwise: specify, e.g. suffix='_stats2_total'\n
+    shift: scale for peak presence (0.5 -> peak has to be taller factor 2 above background)\n
+    figure_number: default=999 -> specify figure number for plot
     '''
     #import datetime
     #import time
@@ -301,8 +302,8 @@ def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off'):
 
     ### re-plot results:   
     if logplot=='on':
-        plt.close(999)
-        plt.figure(999)
+        plt.close(figure_number)
+        plt.figure(figure_number)
         plt.semilogy([PEAK,PEAK],[np.min(y),np.max(y)],'k--',label='PEAK')
         #plt.hold(True)
         plt.semilogy([CEN,CEN],[np.min(y),np.max(y)],'r-.',label='CEN')
@@ -313,8 +314,8 @@ def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off'):
         plt.title('uid: '+str(uid)+' @ '+str(t)+'\nPEAK: '+str(PEAK_y)[:8]+' @ '+str(PEAK)[:8]+'   COM @ '+str(COM)[:8]+ '\n FWHM: '+str(FWHM)[:8]+' @ CEN: '+str(CEN)[:8],size=9)
         plt.show()    
     else:
-        plt.close(999)
-        plt.figure(999)
+        plt.close(figure_number)
+        plt.figure(figure_number)
         plt.plot([PEAK,PEAK],[np.min(y),np.max(y)],'k--',label='PEAK')
         #plt.hold(True)
         plt.plot([CEN,CEN],[np.min(y),np.max(y)],'r-.',label='CEN')
