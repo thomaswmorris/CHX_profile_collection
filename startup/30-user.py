@@ -10,6 +10,31 @@ from bluesky.utils import ProgressBarManager
 from bluesky.plan_stubs import rd
 from matplotlib import cm
 
+def set_bpm(gain='1uA'):
+    """
+    temporary fix to modify gains for Sydor DBPM
+    set_bpm('1uA') available gains: [1uA, 10uA]
+    """
+    cal_pv='XF:11IDB-BI{XBPM:02}Cal:'
+    gain_dict={
+    '1uA':{'gain_level':0,'AOffset-SP':-774,'BOffset-SP':-1294,'COffset-SP':-1094,'DOffset-SP':-1764,'AGain-SP':44013,'BGain-SP':29800,'CGain-SP':31155,'DGain-SP':56293},
+    '10uA':{'gain_level':1,'AOffset-SP':-702,'BOffset-SP':-1237,'COffset-SP':-1042,'DOffset-SP':-1697,'AGain-SP':322938,'BGain-SP':311398,'CGain-SP':267000,'DGain-SP':354306},
+    }
+    caput('XF:11IDB-BI{XBPM:02}Gain:Level-SP',gain_dict[gain]['gain_level'])
+    print('changed Gain Stage, waiting 10s for auto-settings to complete before overwriting them....')
+    RE(sleep(10))
+    g=list(gain_dict[gain].keys())
+    g.remove('gain_level')    
+    for i in g:
+        caput(cal_pv+i,gain_dict[gain][i])
+    RE(sleep(2))
+    check=True
+    for i in g:
+        check=check*caget(cal_pv+i)==gain_dict[gain][i]
+    if check:
+        print('offsets and gains successfully set!')
+    else:
+        print('failed to set offsets and gains correctly :-(')
 
 def md_reset(  ):
     sid = RE.md['scan_id']
@@ -1558,7 +1583,8 @@ def WAXS_rotation(angle):
         print('moving to: '+str(curr_WAXS_angle+direction*1)+' setting X2 velocity to '+str(curr_velocity)+'  X1 -> '+str(curr_X1)+'  X2 -> '+str(curr_X2))
         # need to do the actual moves here:
         SAXS_x2.velocity.value=curr_velocity
-        mov([SAXS_x1,SAXS_x2],[curr_X1,curr_X2])
+        RE(mv(SAXS_x1,curr_X1,SAXS_x2,curr_X2))
+        #mov([SAXS_x1,SAXS_x2],[curr_X1,curr_X2])
         curr_WAXS_angle=WAXS_rot_pos()        # the real thing...
         #curr_WAXS_angle=curr_WAXS_angle+direction*1 #faking move for testing
     # moving the balance:
@@ -1567,7 +1593,8 @@ def WAXS_rotation(angle):
         curr_X2=np.interp(angle,WAXS_angle,x2_pos)
         print('moving to: '+str(angle)+'  X1 -> '+str(curr_X1)+'  X2 -> '+str(curr_X2))    
         # need to do the actual move here:
-        mov([SAXS_x1,SAXS_x2],[curr_X1,curr_X2])
+        #mov([SAXS_x1,SAXS_x2],[curr_X1,curr_X2])
+        RE(mv(SAXS_x1,curr_X1,SAXS_x2,curr_X2))
     else: raise rotation_exception('error: discrepancy from where the rotation is expected to be....')
 
 
