@@ -25,7 +25,15 @@ from nslsii.ad33 import SingleTriggerV33, StatsPluginV33, CamV33Mixin
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
-    pass
+    def describe(self):
+        ret = super().describe()
+        key = self.parent._image_name
+        ret[key]['shape'] = [
+            self.parent.cam.num_images.get(),
+            self.array_size.height.get(),
+            self.array_size.width.get()
+            ]
+        return ret
 
 
 class TIFFPluginEnsuredOff(TIFFPlugin):
