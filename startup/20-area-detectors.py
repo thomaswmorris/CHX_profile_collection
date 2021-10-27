@@ -543,7 +543,7 @@ try:
     set_eiger_defaults(eiger500k_single)
     # AD v3.3+ config:
     eiger500k_single.cam.ensure_nonblocking()
-except:
+except Exception:
     print('eiger500k not configured...')
 
 # Eiger 1M using internal trigger
@@ -564,7 +564,7 @@ try:
     # Eiger 500K using fast trigger assembly
     eiger500k = EigerFastTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k')
     set_eiger_defaults(eiger500k)
-except:
+except Exception:
     print('eiger500k not configured...')
 
 # Eiger 1M using fast trigger assembly
@@ -589,7 +589,7 @@ set_eiger_defaults(eiger1m_manual)
 try:
     eiger500k_manual = EigerManualTrigger('XF:11IDB-ES{Det:Eig500K}', name='eiger500k_single')
     set_eiger_defaults(eiger500k_manual)
-except:
+except Exception:
     print('eiger500k not configured...')
 
 def dscan_manual(dets, motor, start, stop, num):
