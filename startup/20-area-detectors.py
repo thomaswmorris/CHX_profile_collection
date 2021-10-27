@@ -157,6 +157,13 @@ class EigerSimulatedFilePlugin(Device, FileStoreBase):
             datum_kwargs.update({'frame_num': self.frame_num})
         return super().generate_datum(key, timestamp, datum_kwargs)
 
+    def describe(self,):
+        ret = super().describe()
+        cur_bits = self.parent.cam.bit_depth.get()
+        dtype_str_map = {8: '|u1', 16: '<u2', 32:'<u4'}
+        ret[self.parent._image_name]['dtype_str'] = dtype_str_map[cur_bits]
+        return ret
+
 
 class EigerBase(AreaDetector):
     """
@@ -214,6 +221,7 @@ class EigerBase(AreaDetector):
 class EigerDetectorCamV33(AreaDetectorCam):
     '''This is used to update the Eiger detector to AD33.
     '''
+    bit_depth = Cpt(EpicsSignalRO, 'BitDepthImage_RBV', kind='config')
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
                            string=True, kind='config')
 
