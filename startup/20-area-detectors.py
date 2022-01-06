@@ -25,6 +25,7 @@ from nslsii.ad33 import SingleTriggerV33, StatsPluginV33, CamV33Mixin
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
+    ## LUTZ THIS MAY BE BROKEN NUKE IF XRAY EYES DO NOT WORK
     def describe(self):
         ret = super().describe()
         key = self.parent._image_name
@@ -569,7 +570,7 @@ except Exception:
     raise
 
 # Eiger 1M using internal trigger
-eiger1m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig1M}',
+eiger1m_single = EigerSingleTrigger_AD37_V2('XF:11IDB-ES{Det:Eig1M}',
                                     name='eiger1m_single')
 set_eiger_defaults(eiger1m_single)
 # AD v3.3+ config:

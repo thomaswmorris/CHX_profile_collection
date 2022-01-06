@@ -209,7 +209,8 @@ class Diffractometer(Device):
     yh = Cpt(EpicsMotor, '-Ax:YH2}Mtr')
     zh = Cpt(EpicsMotor, '-Ax:ZH}Mtr')
     chv = Cpt(EpicsMotor, '-Ax:ChV}Mtr')
-    thv = Cpt(EpicsMotor, '-Ax:ThV}Mtr')
+    #thv = Cpt(EpicsMotor, '-Ax:ThV}Mtr')
+    phv = Cpt(EpicsMotor, '-Ax:ThV}Mtr')  #Xiao's requested change
     xv = Cpt(EpicsMotor, '-Ax:XV}Mtr')
     yv = Cpt(EpicsMotor, '-Ax:YV}Mtr')
     zv = Cpt(EpicsMotor, '-Ax:ZV}Mtr')
