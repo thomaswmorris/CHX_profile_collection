@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import time as ttime  # tea time
 from types import SimpleNamespace
 from datetime import datetime
@@ -29,11 +30,25 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     def describe(self):
         ret = super().describe()
         key = self.parent._image_name
-        ret[key]['shape'] = [
-            self.parent.cam.num_images.get(),
-            self.array_size.height.get(),
-            self.array_size.width.get()
-            ]
+        color_mode = self.parent.cam.color_mode.get(as_string=True)
+        if color_mode == 'Mono':
+            ret[key]['shape'] = [
+                self.parent.cam.num_images.get(),
+                self.array_size.height.get(),
+                self.array_size.width.get()
+                ]
+       
+        elif 'RGB' in color_mode:
+            ret[key]['shape'] = [self.parent.cam.num_images.get(), *self.array_size.get()]
+        else:
+            raise RuntimeError("SHould never be here")
+        
+        cam_dtype = self.parent.cam.data_type.get(as_string=True)
+        type_map = {'UInt8': '|u1', 'UInt16': '<u2', 'Float32':'<f4', "Float32":'<f8'}
+        if cam_dtype in type_map:
+            ret[key].setdefault('dtype_str', type_map[cam_dtype])
+
+
         return ret
 
 
