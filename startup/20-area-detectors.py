@@ -592,7 +592,7 @@ set_eiger_defaults(eiger1m_single)
 eiger1m_single.cam.ensure_nonblocking()
 
 # Eiger 4M using internal trigger
-eiger4m_single = EigerSingleTrigger_AD37('XF:11IDB-ES{Det:Eig4M}',
+eiger4m_single = EigerSingleTrigger_AD37_V2('XF:11IDB-ES{Det:Eig4M}',
                                     name='eiger4m_single')
 set_eiger_defaults(eiger4m_single)
 # AD v3.3+ config:
