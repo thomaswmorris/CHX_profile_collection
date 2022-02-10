@@ -38,7 +38,7 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
                 self.array_size.width.get()
                 ]
        
-        elif 'RGB' in color_mode:
+        elif color_mode in ['RGB1', 'Bayer']:
             ret[key]['shape'] = [self.parent.cam.num_images.get(), *self.array_size.get()]
         else:
             raise RuntimeError("SHould never be here")
