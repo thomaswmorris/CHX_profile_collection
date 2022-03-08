@@ -514,13 +514,24 @@ xray_eye1 = StandardProsilicaV33('XF:11IDA-BI{Bpm:1-Cam:1}', name='xray_eye1')
 xray_eye2 = StandardProsilicaV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3 = StandardProsilicaV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4 = StandardProsilicaV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
-OAV = StandardProsilicaV33('XF:11IDB-BI{Cam:10}', name='OAV')
+#OAV = StandardProsilicaV33('XF:11IDB-BI{Cam:10}', name='OAV')
+OAV = StandardProsilicaV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
+OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
+
+
+
 BCam =  StandardProsilicaV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam') 
 xray_eye1_writing = StandardProsilicaWithTIFFV33('XF:11IDA-BI{Bpm:1-Cam:1}', name='xray_eye1')
 xray_eye2_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
-OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
+#OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
+OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
+OAV_writing.tiff.write_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
+OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
+OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/2022_1'
+
+
 BCam_writing =  StandardProsilicaWithTIFFV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam') 
 fs1 = StandardProsilicaV33('XF:11IDA-BI{FS:1-Cam:1}', name='fs1')
 fs2 = StandardProsilicaV33('XF:11IDA-BI{FS:2-Cam:1}', name='fs2')
@@ -531,7 +542,9 @@ fs_pbs = StandardProsilicaV33('XF:11IDA-BI{BS:PB-Cam:1}', name='fs_pbs')
 
 all_standard_pros = [xray_eye1, xray_eye2, xray_eye3, xray_eye4,
                      xray_eye1_writing, xray_eye2_writing,
-                     xray_eye3_writing, xray_eye4_writing, OAV, OAV_writing, fs1, fs2,
+                     xray_eye3_writing, xray_eye4_writing, 
+                     OAV, OAV_writing, 
+                     fs1, fs2,
                      fs_wbs, fs_pbs,    #BCam, BCam_writing, 
                      ]
 #                     xray_eye3_writing, fs1, fs2, dcm_cam, fs_wbs, fs_pbs]
@@ -550,6 +563,9 @@ for camera in all_standard_pros:
     #The following line should only be used when running AD V33
     camera.cam.ensure_nonblocking()
     camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
+
+OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
+OAV_writing.stage_sigs[OAV_writing.cam.trigger_mode] = 'Off'
 
 for camera in [xray_eye1_writing, xray_eye2_writing,  BCam, BCam_writing,
                xray_eye3_writing, xray_eye4_writing, OAV_writing]:
