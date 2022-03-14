@@ -567,11 +567,11 @@ for camera in all_standard_pros:
 OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
 OAV_writing.stage_sigs[OAV_writing.cam.trigger_mode] = 'Off'
 
-for camera in [xray_eye1_writing, xray_eye2_writing,  BCam, BCam_writing,
+for camera in [xray_eye1_writing, xray_eye2_writing, BCam_writing,
                xray_eye3_writing, xray_eye4_writing, OAV_writing]:
     camera.read_attrs.append('tiff')
     camera.tiff.read_attrs = []
-
+    camera.cam.ensure_nonblocking()
 
 def set_eiger_defaults(eiger):
     """Choose which attributes to read per-step (read_attrs) or
