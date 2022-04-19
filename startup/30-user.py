@@ -621,11 +621,12 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     # Define trigger PV (use is optional)
     #caput('XF:11ID-CT{ES:1}bo2',1)
     #trigger_pv='XF:11ID-CT{ES:1}bi3'
-    #trigger_pv = 'XF:11ID-CT{M1}bi4' # standard, used for 3D printing
+    trigger_pv = 'XF:11ID-CT{M3}bi2' # standard, used for HD 3D printer (-m3)
     #trigger_pv = 'XF:11IDB-ES{IO:1}DI:1-Sts'   # digitial input DI0 -> used e.g. for Linkam trigger
-    trigger_pv='XF:11ID-CT{ES:1}bi1' 
+    #trigger_pv='XF:11ID-CT{ES:1}bi1' 
     #trigger_pv='XF:11IDB-ES{IO}DI:4-Sts' #linkam trigger
     trigger_PV=EpicsSignal(trigger_pv,name='trigger_PV')
+   
     
     if PV_trigger and position_trigger:
       raise series_Exception('error: Cannot trigger both at PV signal and motor position -> chose one!')
@@ -725,6 +726,8 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
         detlist=[detector]
     else:
         detlist=[detector,OAV_writing]
+        OAV.cam.acquire.set(0) # stop camera and set mode to multiple, otherwise something is resetting the number of images...
+        OAV.cam.image_mode.set(1)
         org_pt=OAV.cam.acquire_period.value 
         org_ni=OAV.cam.num_images.value
     
@@ -737,7 +740,7 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     if OAV_mode == 'movie':
         
         ni=acqp*imnum/OAV.cam.acquire_period.value
-        ni=ni+ni/10
+        ni=ni-ni*.2
         OAV.cam.num_images.put(np.ceil(ni),wait=True)
         
     if use_xbpm:
@@ -761,6 +764,9 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     if OAV_mode != 'none':     
         OAV.cam.num_images.put(org_ni)
         OAV.cam.acquire_period.put(org_pt)
+        # also -at least temporarily- need to set mode back and restart acquisition.
+        OAV.cam.image_mode.set(2)
+        OAV.cam.acquire.set(1)
     
     ####### add acquired uid to database list for automatic compression #########
     if auto_compression:
@@ -1248,6 +1254,7 @@ def olog_entry(string):
     try:
         olog_client.log(string)
     except:
+        print("Warning: olog entry has faild.."+string)
         pass
 # automatic purging procedure for cryo-cooler:
 def purge_cryo():

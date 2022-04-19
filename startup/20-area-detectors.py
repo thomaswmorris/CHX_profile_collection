@@ -514,8 +514,8 @@ xray_eye1 = StandardProsilicaV33('XF:11IDA-BI{Bpm:1-Cam:1}', name='xray_eye1')
 xray_eye2 = StandardProsilicaV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3 = StandardProsilicaV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4 = StandardProsilicaV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
-#OAV = StandardProsilicaV33('XF:11IDB-BI{Cam:10}', name='OAV')
-OAV = StandardProsilicaV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
+OAV = StandardProsilicaV33('XF:11IDB-BI{Cam:10}', name='OAV')
+#OAV = StandardProsilicaV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
 OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
 
 
@@ -525,8 +525,8 @@ xray_eye1_writing = StandardProsilicaWithTIFFV33('XF:11IDA-BI{Bpm:1-Cam:1}', nam
 xray_eye2_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
-#OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
-OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
+OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
+#OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
 OAV_writing.tiff.write_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
 OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
 OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/2022_1'
@@ -588,7 +588,62 @@ def set_eiger_defaults(eiger):
                                  'threshold_energy', 'photon_energy']
     eiger.cam.read_attrs = []
     eiger.cam.configuration_attrs = ['acquire_time', 'acquire_period',
+
                                      'num_images']
+def no_plugins(det, *, skip_list=('file',)):
+    """Disable all AD plugins we know about.
+    
+    This is a helper to disable all of the plugins on an area detector. 
+    The defaults are tune for eiger*m_single
+
+    Parameters
+    ----------
+    det : AreaDetectorBase
+        The device to opreate on
+
+    skip_list : tuple[str], default=('file',)
+        Any plugins to leave in their current state.
+    """
+    for p in det.component_names:
+        if p in skip_list:
+            continue
+        plugin = getattr(det, p)
+        if hasattr(plugin, 'disable_on_stage'):
+            plugin.disable_on_stage()
+
+def all_plugins(det, *, skip_list=()):
+    """Enable all AD plugins we know about.
+    
+    This is a helper to enable all of the plugins on an area detector. 
+
+    Parameters
+    ----------
+    det : AreaDetectorBase
+        The device to opreate on
+
+    skip_list : tuple[str], default=()
+        Any plugins to leave in their current state.
+    """
+    for p in det.component_names:
+        if p in skip_list:
+            continue
+        plugin = getattr(det, p)
+        if hasattr(plugin, 'enable_on_stage'):
+            plugin.enable_on_stage()
+            
+
+def enable_plugins(det, plugin_names):
+    """Selectively enable plugins on an AreaDetector
+    
+    Parameters
+    ----------
+    det : AreaDetectorBase
+        The device to configure
+    plugin_names : List[str]
+        The plugins to enable
+    """
+    for p in plugin_names:
+        getattr(det, p).enable_on_stage()
 
 try:
     # Eiger 500k using internal trigger
