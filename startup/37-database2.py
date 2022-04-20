@@ -1,14 +1,12 @@
 #import datetime
+import os
 import pymongo 
 from tqdm import tqdm
 from bson import ObjectId
 import matplotlib.patches as mpatches
 from IPython.display import clear_output
 
-try:
-    cli = db.v2._run_start_collection.database.client
-except Exception:
-    cli = pymongo.MongoClient(db.reg.config['host'])
+cli = pymongo.MongoClient(os.environ["DATABROKER_HOST"])
 
 samples_2 = cli.get_database('samples').get_collection('samples_2')
 data_acquisition_collection = cli.get_database('samples').get_collection('data_acquisition_collection')
