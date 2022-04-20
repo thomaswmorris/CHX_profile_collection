@@ -71,8 +71,17 @@ RE(rel_scan([xray_eye3], diff.xh, -.1, .1, 3))
 RE(rel_scan([xray_eye3], gsl.xc, -.1, .1, 3))
 
 print('A scan with the xray_eye3_writing detector')
-RE(rel_scan([xray_eye3_writing], diff.xh, -.1, .1, 3))
+uid_scan, = RE(rel_scan([xray_eye3_writing], diff.xh, -.1, .1, 3))
 
-img = db[-1].xarray_dask()['xray_eye3_image'];
+img = db[uid_scan].xarray_dask()['xray_eye3_image'];
 print('timestamp issue needs to be fixed...')
 #plt.imshow( img[0] )
+
+print('Taking a few alignment scans (with the elm):')
+det = [elm]  #using the elm detector
+uid_dcmp, = RE(dscan(det,dcm.p,-.002,.002,20))
+#ps(uid_dcmp) #wont work without beam
+RE(dscan(det,dcm.b,-.2,.2,50))
+
+
+

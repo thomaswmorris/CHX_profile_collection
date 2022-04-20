@@ -1,6 +1,10 @@
 import nslsii
 from bluesky import RunEngine
-nslsii.configure_base(get_ipython().user_ns, 'chx')
+nslsii.configure_base(
+    get_ipython().user_ns,
+    'chx',
+    publish_documents_with_kafka=True
+)
 
 
 from pathlib import Path
