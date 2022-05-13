@@ -37,12 +37,12 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
                 self.array_size.height.get(),
                 self.array_size.width.get()
                 ]
-       
+
         elif color_mode in ['RGB1', 'Bayer']:
             ret[key]['shape'] = [self.parent.cam.num_images.get(), *self.array_size.get()]
         else:
             raise RuntimeError("SHould never be here")
-        
+
         cam_dtype = self.parent.cam.data_type.get(as_string=True)
         type_map = {'UInt8': '|u1', 'UInt16': '<u2', 'Float32':'<f4', "Float64":'<f8'}
         if cam_dtype in type_map:
@@ -129,14 +129,14 @@ class StandardProsilicaV33(SingleTriggerV33, ProsilicaDetector):
 class StandardProsilicaWithTIFF(StandardProsilica):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/xf11id1/data/%Y/%m/%d/',
-               root='/nsls2/xf11id1/data')
+               write_path_template='/nsls2/data/chx/legacy/data/%Y/%m/%d/',
+               root='/nsls2/data/chx/legacy/data')
 
 class StandardProsilicaWithTIFFV33(StandardProsilicaV33):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/xf11id1/data/%Y/%m/%d/',
-               root='/nsls2/xf11id1/data')
+               write_path_template='/nsls2/data/chx/legacy/data/%Y/%m/%d/',
+               root='/nsls2/data/chx/legacy/data')
                #root='/XF11ID/data')
 
 class EigerSimulatedFilePlugin(Device, FileStoreBase):
@@ -199,9 +199,9 @@ class EigerBase(AreaDetector):
     num_triggers = ADComponent(EpicsSignalWithRBV, 'cam1:NumTriggers')
     file = Cpt(EigerSimulatedFilePlugin, suffix='cam1:',
                #write_path_template='/XF11ID/data/%Y/%m/%d/',
-               write_path_template='/nsls2/xf11id1/data/%Y/%m/%d/',
+               write_path_template='/nsls2/data/chx/legacy/data/%Y/%m/%d/',
                #root='/XF11ID/',
-               root='/nsls2/xf11id1/')
+               root='/nsls2/data/chx/legacy/data/')
     beam_center_x = ADComponent(EpicsSignalWithRBV, 'cam1:BeamX')
     beam_center_y = ADComponent(EpicsSignalWithRBV, 'cam1:BeamY')
     wavelength = ADComponent(EpicsSignalWithRBV, 'cam1:Wavelength')
@@ -496,7 +496,7 @@ class EigerManualTrigger(SingleTrigger, EigerBase):
 
 
         # first subscribe a callback
-        self.cam.array_counter.subscribe(counter_cb, run=False) 
+        self.cam.array_counter.subscribe(counter_cb, run=False)
 
         # then call trigger on the PV
         self.special_trigger_button.put(1, wait=False)
@@ -520,7 +520,7 @@ OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
 
 
 
-BCam =  StandardProsilicaV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam') 
+BCam =  StandardProsilicaV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam')
 xray_eye1_writing = StandardProsilicaWithTIFFV33('XF:11IDA-BI{Bpm:1-Cam:1}', name='xray_eye1')
 xray_eye2_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
@@ -532,7 +532,7 @@ OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%
 OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/2022_1'
 
 
-BCam_writing =  StandardProsilicaWithTIFFV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam') 
+BCam_writing =  StandardProsilicaWithTIFFV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam')
 fs1 = StandardProsilicaV33('XF:11IDA-BI{FS:1-Cam:1}', name='fs1')
 fs2 = StandardProsilicaV33('XF:11IDA-BI{FS:2-Cam:1}', name='fs2')
 fs_wbs = StandardProsilicaV33('XF:11IDA-BI{BS:WB-Cam:1}', name='fs_wbs')
@@ -542,10 +542,10 @@ fs_pbs = StandardProsilicaV33('XF:11IDA-BI{BS:PB-Cam:1}', name='fs_pbs')
 
 all_standard_pros = [xray_eye1, xray_eye2, xray_eye3, xray_eye4,
                      xray_eye1_writing, xray_eye2_writing,
-                     xray_eye3_writing, xray_eye4_writing, 
-                     OAV, OAV_writing, 
+                     xray_eye3_writing, xray_eye4_writing,
+                     OAV, OAV_writing,
                      fs1, fs2,
-                     fs_wbs, fs_pbs,    #BCam, BCam_writing, 
+                     fs_wbs, fs_pbs,    #BCam, BCam_writing,
                      ]
 #                     xray_eye3_writing, fs1, fs2, dcm_cam, fs_wbs, fs_pbs]
 for camera in all_standard_pros:
@@ -592,8 +592,8 @@ def set_eiger_defaults(eiger):
                                      'num_images']
 def no_plugins(det, *, skip_list=('file',)):
     """Disable all AD plugins we know about.
-    
-    This is a helper to disable all of the plugins on an area detector. 
+
+    This is a helper to disable all of the plugins on an area detector.
     The defaults are tune for eiger*m_single
 
     Parameters
@@ -613,8 +613,8 @@ def no_plugins(det, *, skip_list=('file',)):
 
 def all_plugins(det, *, skip_list=()):
     """Enable all AD plugins we know about.
-    
-    This is a helper to enable all of the plugins on an area detector. 
+
+    This is a helper to enable all of the plugins on an area detector.
 
     Parameters
     ----------
@@ -630,11 +630,11 @@ def all_plugins(det, *, skip_list=()):
         plugin = getattr(det, p)
         if hasattr(plugin, 'enable_on_stage'):
             plugin.enable_on_stage()
-            
+
 
 def enable_plugins(det, plugin_names):
     """Selectively enable plugins on an AreaDetector
-    
+
     Parameters
     ----------
     det : AreaDetectorBase
