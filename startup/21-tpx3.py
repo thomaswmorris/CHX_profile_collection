@@ -61,6 +61,8 @@ class Tpx3Files(Device):
         self._datum_kwargs_map = dict()  # store kwargs for each uid
         self._n = 0
 
+        self.stage_sigs['image_write_enable'] = 'false'
+
     def stage(self):
         # TODO also do the images
 
