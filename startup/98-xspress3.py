@@ -157,24 +157,25 @@ class XspressZebra(Device):
 
 
 def construct_mca():
-    ...
-
-# try:
-#     mca = XspressZebra('', name='mca', configuration_attrs=['zebra', 'xs'], read_attrs=['xs'])
-#     #rois = [ 'roi%02d'%i for i in range(1,17) ]
-#     rois = [ 'roi%02d'%i for i in range(1,2) ]
-#     mca.xs.channel1.rois.read_attrs = rois  #['roi01']    
-#     mca.xs.channel1.rois.configuration_attrs =  rois #['roi01']
-#     #mca.xs.channel1.set_roi(1, 5500, 6500)
-#     mca.xs.channel1.set_roi(1, 5000,5750) #, namely, the energy from 5.2 keV for 5.6 keV ( iocs edm scree x10 ), 1 is the roi1
-# except:
-#     pass
-#     #for i in range(1,17):
-#     #    mca.xs.channel1.set_roi(i,1000*i, 1000*(i+1)) # from css screen: x10!!!
-# #except: pass
-# # mca.xs.channel1.set_roi(2, 5500, 6500)
-# # mca.xs.channel1.rois.read_attrs.append('roi02')
-# # mca.xs.channel1.rois.configuration_attrs.append('roi02')
+    """
+    some description needed...
+    """
+    try:
+        mca = XspressZebra('', name='mca', configuration_attrs=['zebra', 'xs'], read_attrs=['xs'])
+        #rois = [ 'roi%02d'%i for i in range(1,17) ]
+        rois = [ 'roi%02d'%i for i in range(1,2) ]
+        mca.xs.channel1.rois.read_attrs = rois  #['roi01']    
+        mca.xs.channel1.rois.configuration_attrs =  rois #['roi01']
+        #mca.xs.channel1.set_roi(1, 5500, 6500)
+        mca.xs.channel1.set_roi(1, 5000,5750) #, namely, the energy from 5.2 keV for 5.6 keV ( iocs edm scree x10 ), 1 is the roi1
+    except:
+        pass
+     #for i in range(1,17):
+     #    mca.xs.channel1.set_roi(i,1000*i, 1000*(i+1)) # from css screen: x10!!!
+ #except: pass
+ # mca.xs.channel1.set_roi(2, 5500, 6500)
+ # mca.xs.channel1.rois.read_attrs.append('roi02')
+ # mca.xs.channel1.rois.configuration_attrs.append('roi02')
 
 def set_rois(mca, roi_step=1000, roi_start=0, roi_range= range(1,17) ):
     mca.xs.channel1.clear_all_rois()

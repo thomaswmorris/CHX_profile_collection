@@ -527,9 +527,9 @@ xray_eye3_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:08}', name='xr
 xray_eye4_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
 OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
 #OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
-OAV_writing.tiff.write_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
-OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/2022_1/OAV/%Y/%m/%d'
-OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/2022_1'
+OAV_writing.tiff.write_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
+OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
+OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/data/'
 
 
 BCam_writing =  StandardProsilicaWithTIFFV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam')

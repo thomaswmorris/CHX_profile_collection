@@ -101,6 +101,7 @@ def match_IVU_energy(harm=7,xtal='Si111cryo'):
 	RE(mv(ivu_gap,xf.get_gap(xf.get_EBragg(xtal,theta_Bragg=-1*dcm.b.user_readback.value),harmonic=harm)[0]))
 
 
+
 def Energy_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=[eiger1m_single]): 
 	"""
     Energy_scan(energy, gap=[], xtal="Si111cryo", gapmode="auto",harm=5, det=[eiger1m_single]):

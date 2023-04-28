@@ -527,7 +527,7 @@ def eiger1m_series(expt=.1,acqp='auto',imnum=5,comment=''):
 
 def prep_series_feedback():
     fast_sh.open()
-    yield from bps.sleep(.5)
+    yield from bps.sleep(.1)
     #RE(mv(hdm_feedback_selector, 0)) # turn off epics pid feedback on HDM encoder    
     #caput('XF:11IDA-OP{Mir:HDM-Ax:P}Sts:FB-Sel',0)  # swapped: switch off encoder feedback after starting feedback on the BPM
     caput('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP',1)
@@ -638,7 +638,7 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
         acqp=expt
     
     #check for maxiumum frame rates (and correct if higher...might be redundant to what is done on the Dectris driver level, but ensures consistent md):
-    freq_dict={'eiger1m':.00034,'eiger4m':.00134,'eiger500k':.000112}
+    freq_dict={'eiger1m':.00034,'eiger4m':.0007,'eiger500k':.000112}
     if acqp < freq_dict[det]:
         acqp=freq_dict[det]
     
@@ -656,10 +656,12 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     # set HDF5 file chunk size:
     if imnum < 10:
             caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],1)
-    elif imnum < 500:                                                            
+    elif imnum < 100:                                                            
             caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],10)
-    else: 
+    elif imnum < 1000:                                                            
             caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],100)
+    else: 
+            caput('XF:11IDB-ES{Det:%s}cam1:FWNImagesPerFile'%PV_dict[det],1000)
 
 
     if shutter_mode=='single':
@@ -693,8 +695,13 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     transmission=att.get_T()*att2.get_T()
     T_yoke=str(caget('XF:11IDB-ES{Env:01-Chan:C}T:C-I'))
     T_sample=str(caget('XF:11IDB-ES{Env:01-Chan:D}T:C-I'))
+    T_sample_stinger = str(caget('XF:11IDB-ES{Env:02}LS340:TC1:Sample')) #Xiao added Apr 29 2022
+    #md_series={'exposure time':str(expt), 'acquire period':str(acqp),'shutter mode':shutter_mode,'number of images':str(imnum),'data path':idpath,'sequence id':str(seqid),
+                  #'transmission':transmission,'OAV_mode':OAV_mode,'T_yoke':T_yoke,'T_sample':T_sample,'analysis':analysis,'feedback_x':fx,'feedback_y':fy}
+    #Xiao added 'T_sample_stinger'
     md_series={'exposure time':str(expt), 'acquire period':str(acqp),'shutter mode':shutter_mode,'number of images':str(imnum),'data path':idpath,'sequence id':str(seqid),
-                  'transmission':transmission,'OAV_mode':OAV_mode,'T_yoke':T_yoke,'T_sample':T_sample,'analysis':analysis,'feedback_x':fx,'feedback_y':fy}
+                  'transmission':transmission,'OAV_mode':OAV_mode,'T_yoke':T_yoke,'T_sample':T_sample,'T_sample_stinger':T_sample_stinger,'analysis':analysis,'feedback_x':fx,'feedback_y':fy}
+
     ## end series specific metadata
     ## merge with md_import, dublicate keys will be converted to string and add '_' in md_import
     double_keys=list(set(md_series).intersection(md_import))
@@ -738,10 +745,11 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
         OAV.cam.num_images.put(2,wait=True)
         OAV.cam.acquire_period.put(pt,wait=True) 
     if OAV_mode == 'movie':
-        
+        print('set OAV')
         ni=acqp*imnum/OAV.cam.acquire_period.value
         ni=ni-ni*.2
         OAV.cam.num_images.put(np.ceil(ni),wait=True)
+        
         
     if use_xbpm:
         caput( 'XF:11IDB-BI{XBPM:02}FaSoftTrig-SP',1,wait=True) #yugang add at Sep 13, 2017 for test fast shutter by using xbpm
@@ -762,11 +770,11 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     
     # setting image number and period back for OAV camera:
     if OAV_mode != 'none':     
-        OAV.cam.num_images.put(org_ni)
-        OAV.cam.acquire_period.put(org_pt)
+        OAV.cam.num_images.set(org_ni)
+        OAV.cam.acquire_period.set(org_pt)
         # also -at least temporarily- need to set mode back and restart acquisition.
-        OAV.cam.image_mode.set(2)
-        OAV.cam.acquire.set(1)
+        OAV.cam.image_mode.put(2)
+        OAV.cam.acquire.put(1)
     
     ####### add acquired uid to database list for automatic compression #########
     if auto_compression:
@@ -1671,7 +1679,7 @@ def auto_pump():
     - makes sure pumps are stopped (wait time of 60 s..)
     - 
     '''
-    if caget(vac_pv) >=740:
+    if caget(vac_pv) >=640:
         caput(gn2_close,1)
         caput(turbo_on,0)
         caput(pump_on,0)

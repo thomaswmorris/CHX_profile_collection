@@ -6,6 +6,8 @@ nslsii.configure_base(
     publish_documents_with_kafka=True
 )
 
+# set plot properties for 4k monitors
+plt.rcParams['figure.dpi']=200
 
 from pathlib import Path
 

@@ -254,7 +254,7 @@ def YAG_FastSh( yag='on', fs='on' ):
     fs_pos = 'XF:11IDB-ES{Zebra}:SOFT_IN:B0'
 
 
-    if yag is 'on':
+    if yag == 'on':
         #caput( yag_pos, 30)
         value = (yield from rd(foil_x.user_readback))
         if abs(value - (30))>=.3:
@@ -269,7 +269,7 @@ def YAG_FastSh( yag='on', fs='on' ):
         print ('Empty is in the beam')
         
 
-    if fs is 'on':
+    if fs == 'on':
         yield from bp.abs_set( fast_sh, 1 )        
     else:
         yield from bp.abs_set( fast_sh, 0 )
@@ -278,7 +278,7 @@ def YAG_FastSh( yag='on', fs='on' ):
 def BPMFeed(  xbpm_y= 'on' ):
     xbpm_y_pos = 'XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP'
     
-    if xbpm_y is 'on':        
+    if xbpm_y == 'on':        
         caput( xbpm_y_pos, 1 )   
     else:
         caput( xbpm_y_pos, 0 )
@@ -292,20 +292,20 @@ def YAG_FastSh_BPMFeed( yag='on', fs='on', xbpm_y= 'on' ):
     xbpm_y_pos = 'XF:11IDB-BI{XBPM:02}Fdbk:BEn-SP'
     fs_pos = 'XF:11IDB-ES{Zebra}:SOFT_IN:B0'
 
-    if fs is 'on':
+    if fs == 'on':
         caput( fs_pos, 1)
     else:
         caput( fs_pos, 0 )
         xbpm_y = 'off'
 
-    if xbpm_y is 'on':
+    if xbpm_y == 'on':
         sleep(5)
         caput( xbpm_y_pos, 1 )
     
     else:
         caput( xbpm_y_pos, 0 )
 
-    if yag is 'on':
+    if yag == 'on':
         caput( yag_pos, 30)
     else:
         caput( yag_pos, -26)

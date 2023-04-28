@@ -147,8 +147,8 @@ class Kinoform(Device):
     ly = Cpt(EpicsMotor, '-Ax:YT}Mtr')
 
 class SmarPod_x(PVPositionerPC):
-    readback = Cpt(EpicsSignalRO, '-Ax:1}Pos-I')
-    setpoint = Cpt(EpicsSignal, '-Ax:1}Pos-SP')
+    readback = Cpt(EpicsSignalRO, '-Ax:2}Pos-I')
+    setpoint = Cpt(EpicsSignal, '-Ax:2}Pos-SP')
     actuate = Cpt(EpicsSignal, '}Move-Cmd')
     actuate_value = 1
 smp_x = SmarPod_x('XF:11IDB-ES{SPod:1',name='smp_x')
@@ -163,16 +163,16 @@ smp_y = SmarPod_y('XF:11IDB-ES{SPod:1',name='smp_y')
 smp_y.readback.name = 'smp_y'    
 
 class SmarPod_z(PVPositionerPC):
-    readback = Cpt(EpicsSignalRO, '-Ax:2}Pos-I')
-    setpoint = Cpt(EpicsSignal, '-Ax:2}Pos-SP')
+    readback = Cpt(EpicsSignalRO, '-Ax:1}Pos-I')
+    setpoint = Cpt(EpicsSignal, '-Ax:1}Pos-SP')
     actuate = Cpt(EpicsSignal, '}Move-Cmd')
     actuate_value = 1
 smp_z = SmarPod_z('XF:11IDB-ES{SPod:1',name='smp_z')
 smp_z.readback.name = 'smp_z'    
 
 class SmarPod_rx(PVPositionerPC):
-    readback = Cpt(EpicsSignalRO, '-Ax:1}Rot-I')
-    setpoint = Cpt(EpicsSignal, '-Ax:1}Rot-SP')
+    readback = Cpt(EpicsSignalRO, '-Ax:2}Rot-I')
+    setpoint = Cpt(EpicsSignal, '-Ax:2}Rot-SP')
     actuate = Cpt(EpicsSignal, '}Move-Cmd')
     actuate_value = 1
 smp_rx = SmarPod_rx('XF:11IDB-ES{SPod:1',name='smp_rx')
@@ -187,12 +187,15 @@ smp_ry = SmarPod_ry('XF:11IDB-ES{SPod:1',name='smp_ry')
 smp_ry.readback.name = 'smp_ry'
 
 class SmarPod_rz(PVPositionerPC):
-    readback = Cpt(EpicsSignalRO, '-Ax:2}Rot-I')
-    setpoint = Cpt(EpicsSignal, '-Ax:2}Rot-SP')
+    readback = Cpt(EpicsSignalRO, '-Ax:1}Rot-I')
+    setpoint = Cpt(EpicsSignal, '-Ax:1}Rot-SP')
     actuate = Cpt(EpicsSignal, '}Move-Cmd')
     actuate_value = 1
 smp_rz = SmarPod_rz('XF:11IDB-ES{SPod:1',name='smp_rz')
 smp_rz.readback.name = 'smp_rz'
+
+class SmarAct_single_axis(Device):
+    x = Cpt(EpicsMotor, '{POS:1}Mtr')
 
 class Diffractometer(Device):
     
@@ -235,6 +238,7 @@ diff = Diffractometer('XF:11IDB-ES{Dif', name='diff')
 # sample beamstop
 #sambst = XYMotor('XF:11IDB-OP{BS:Samp', name='sambst')
 
+sam = SmarAct_single_axis('XF:11IDB-OP',name='sam')
 s1 = MotorCenterAndGap('XF:11IDB-OP{Slt:1', name='s1')
 k1 = Kinoform('XF:11IDB-OP{Lens:1', name='k1')  # upstream
 k2 = Kinoform('XF:11IDB-OP{Lens:2', name='k2')  # downstream
