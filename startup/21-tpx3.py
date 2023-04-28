@@ -1,5 +1,6 @@
 from pathlib import PurePath
 from datetime import datetime
+from typing import List
 
 import numpy as np
 
@@ -7,10 +8,12 @@ from ophyd.areadetector.detectors import AreaDetector
 from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.paths import EpicsPathSignal
 from ophyd.areadetector.base import EpicsSignalWithRBV
-from ophyd.areadetector.plugins import StatsPlugin_V34, ROIPlugin_V34
+from ophyd.areadetector.plugins import StatsPlugin_V34, ROIPlugin_V34, TimeSeriesPlugin_V34
 from ophyd.areadetector.filestore_mixins import new_short_uid, FileStoreBase
 from ophyd.signal import EpicsSignal
 from ophyd import Component as Cpt, Device
+
+import bluesky.plan_stubs as bps
 
 from nslsii.ad33 import SingleTriggerV33
 
@@ -61,7 +64,7 @@ class Tpx3Files(Device):
         self._datum_kwargs_map = dict()  # store kwargs for each uid
         self._n = 0
 
-        self.stage_sigs['image_write_enable'] = 'false'
+        self.stage_sigs['img_write_enable'] = 'false'
 
     def stage(self):
         # TODO also do the images
@@ -96,9 +99,18 @@ class Tpx3Files(Device):
         # because we need to flush setting to actual server from IOC
         self.set_settings.set(1).wait()
 
-        filenames = [f'{self._write_path}{self._res_uid}_{self._n}_{j:06d}.tpx3' for j in range(self.parent.cam.num_images.get())]
+        filenames = [f'{self._write_path}{self._res_uid}_{self._n:05d}_{j:06d}.tpx3' for j in range(self.parent.cam.num_images.get())]
         self._n += 1
         self.raw_filepaths.set(filenames).wait()
+
+    def unstage(self) -> List[object]:
+        # TODO reset these to their original values rather than junk
+        self.raw_filepath.set('/does/not/exist/').wait()
+        self.raw_file_template.set(f"garbage").wait()
+
+        # because we need to flush setting to actual server from IOC
+        self.set_settings.set(1).wait()
+        return super().unstage()
 
 
 class TimePixDetector(SingleTriggerV33, AreaDetector):
@@ -116,16 +128,43 @@ class TimePixDetector(SingleTriggerV33, AreaDetector):
     roi2 = Cpt(ROIPlugin_V34, "ROI2:")
     roi3 = Cpt(ROIPlugin_V34, "ROI3:")
     roi4 = Cpt(ROIPlugin_V34, "ROI4:")
-    
+
+    ts1 = Cpt(TimeSeriesPlugin_V34, "Stats1:TS:")
+    ts2 = Cpt(TimeSeriesPlugin_V34, "Stats2:TS:")
+    ts3 = Cpt(TimeSeriesPlugin_V34, "Stats3:TS:")
+    ts4 = Cpt(TimeSeriesPlugin_V34, "Stats4:TS:")    
+
     def trigger(self):
         self.files.update_file_template()
+        for j in range(1, 5):
+            getattr(self, f'ts{j}').ts_acquire.set(1).wait()    
         return super().trigger()
+    
+    def set_num_images(self, n):
+        yield from bps.mv(
+            self.cam.num_images, n, 
+            self.ts1.ts_num_points, n,
+            self.ts2.ts_num_points, n,
+            self.ts3.ts_num_points, n,
+            self.ts4.ts_num_points, n)
+        
+    def set_total_exposure(self, exp, *, max_exposure=10):
+        num_frames = 1 + exp // max_exposure
+        real_exp = exp / num_frames
+        period = real_exp + .1
+
+        yield from bps.mv(self.cam.acquire_period, period)
+        yield from bps.mv(self.cam.acquire_time, real_exp)
+        yield from self.set_num_images(num_frames)            
 
 
 tpx3 = TimePixDetector("TPX3-TEST:", name="tpx3")
 
-tpx3.stats1.kind = 'normal'
-tpx3.stats1.total.kind = 'hinted'
-
+for j in range(1, 5):
+    stat = getattr(tpx3, f'stats{j}')
+    stat.kind = 'normal'
+    stat.total.kind = 'hinted'
+    stat.ts_total.kind = 'normal'
+    
 # for j in [1, 2, 3, 4]:
 #     getattr(tpx3, f'stats{j}').nd_array_port.set(f'ROI{j}')
