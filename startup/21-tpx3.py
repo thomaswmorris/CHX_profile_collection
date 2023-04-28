@@ -1,6 +1,8 @@
 from pathlib import PurePath
 from datetime import datetime
 
+import numpy as np
+
 from ophyd.areadetector.detectors import AreaDetector
 from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.paths import EpicsPathSignal
@@ -12,6 +14,14 @@ from ophyd import Component as Cpt, Device
 
 from nslsii.ad33 import SingleTriggerV33
 
+class PreciseDtypeSignal(Signal):
+    def describe(self):
+        ret = super().describe()
+        ret[self.name].setdefault('dtype_str',
+                                  str(np.asarray(self.get()).dtype)
+
+        )
+        return ret
 
 class Tpx3Files(Device):
     # The other PVs only take affect after this is set
@@ -39,7 +49,7 @@ class Tpx3Files(Device):
     prv1_filepath = Cpt(EpicsSignal, "PrvImg1FilePath", kind="config")
 
     # HACK UNTIL WE GET HANDLERS SET UP
-    raw_filepaths = Cpt(Signal, kind="normal")
+    raw_filepaths = Cpt(PreciseDtypeSignal, kind="normal")
 
     def __init__(self, *args, **kwargs):
         self.sequence_id_offset = 1
@@ -49,32 +59,43 @@ class Tpx3Files(Device):
         self.frame_num = None
         super().__init__(*args, **kwargs)
         self._datum_kwargs_map = dict()  # store kwargs for each uid
+        self._n = 0
 
     def stage(self):
         # TODO also do the images
 
-        res_uid = new_short_uid()
-
-        write_path = datetime.now().strftime(self.write_path_template)
+        self._res_uid = res_uid = new_short_uid()
+        write_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
+        self._write_path = write_path = datetime.now().strftime(write_path_template)
         self.raw_filepath.set(write_path).wait()
 
         # TODO check what the % formatting means to the server
-        self.raw_file_template.set(f"{res_uid}%Hhs").wait()
+        self.raw_file_template.set(f"{res_uid}_0").wait()
 
         # because we need to flush setting to actual server from IOC
-        self.set_settings(1).wait()
+        self.set_settings.set(1).wait()
 
-        nframes = self.parent.cam.num_images.get()
-        self.raw_filepaths.set([""] * nframes).wait()
+        # fill in first guess, this ill increment self._n but we really do not want to!
+        self.update_file_template()
+        # reset this back to 0!  
+        self._n = 0
 
         super().stage()
 
-    def generate_datum(self, key, timestamp, datum_kwargs):
-        # we are relying on this being called to do some useful work
-        # but do not strictly generate a datum
+    def update_file_template(self):
+        # The server generates files with in a trigger that are formatted as
+        # filepath/template{datetime only}_{j:d6}.tpx3
+        # however the counting is only within the trigger and because we want to be able to predict the file names we can not
+        # rely on the date formatting, this we need to set this template on every trigger
 
-        # TODO actually generate / get the correct file names
-        filenames = [f"{j}.tpx3" for j in range(self.parent.cam.num_images.get())]
+        
+        # TODO check what the % formatting means to the server
+        self.raw_file_template.set(f"{self._res_uid}_{self._n}_").wait()
+        # because we need to flush setting to actual server from IOC
+        self.set_settings.set(1).wait()
+
+        filenames = [f'{self._write_path}{self._res_uid}_{self._n}_{j:06d}.tpx3' for j in range(self.parent.cam.num_images.get())]
+        self._n += 1
         self.raw_filepaths.set(filenames).wait()
 
 
@@ -93,11 +114,16 @@ class TimePixDetector(SingleTriggerV33, AreaDetector):
     roi2 = Cpt(ROIPlugin_V34, "ROI2:")
     roi3 = Cpt(ROIPlugin_V34, "ROI3:")
     roi4 = Cpt(ROIPlugin_V34, "ROI4:")
-    ...
+    
+    def trigger(self):
+        self.files.update_file_template()
+        return super().trigger()
 
 
 tpx3 = TimePixDetector("TPX3-TEST:", name="tpx3")
 
+tpx3.stats1.kind = 'normal'
+tpx3.stats1.total.kind = 'hinted'
 
 # for j in [1, 2, 3, 4]:
 #     getattr(tpx3, f'stats{j}').nd_array_port.set(f'ROI{j}')
