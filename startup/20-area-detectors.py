@@ -515,9 +515,8 @@ xray_eye2 = StandardProsilicaV33('XF:11IDB-BI{Mon:1-Cam:1}', name='xray_eye2')
 xray_eye3 = StandardProsilicaV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4 = StandardProsilicaV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
 OAV = StandardProsilicaV33('XF:11IDB-BI{Cam:10}', name='OAV')
-#OAV = StandardProsilicaV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
-OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
-
+#OAV = StandardProsilicaV33('XF:11ID-M3{Det-Cam:3}', name='OAV')  # printer OAV using Grasshoper UBS3 camera
+#OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
 
 
 BCam =  StandardProsilicaV33('XF:11IDB-ES{BFLY-Cam:1}', name='BCam')
@@ -526,7 +525,7 @@ xray_eye2_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Mon:1-Cam:1}', nam
 xray_eye3_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:08}', name='xray_eye3')
 xray_eye4_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:09}', name='xray_eye4')
 OAV_writing = StandardProsilicaWithTIFFV33('XF:11IDB-BI{Cam:10}', name='OAV')
-#OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:2}', name='OAV')
+#OAV_writing = StandardProsilicaWithTIFFV33('XF:11ID-M3{Det-Cam:3}', name='OAV') # printer OAV using Grasshoper UBS3 camera
 OAV_writing.tiff.write_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
 OAV_writing.tiff.read_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
 OAV_writing.tiff.reg_root = '/nsls2/data/chx/legacy/data/'
@@ -562,10 +561,10 @@ for camera in all_standard_pros:
 
     #The following line should only be used when running AD V33
     camera.cam.ensure_nonblocking()
-    camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
+    #camera.stage_sigs[camera.cam.trigger_mode] = 'Fixed Rate'
 
-OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
-OAV_writing.stage_sigs[OAV_writing.cam.trigger_mode] = 'Off'
+#OAV.stage_sigs[OAV.cam.trigger_mode] = 'Off'
+#OAV_writing.stage_sigs[OAV_writing.cam.trigger_mode] = 'Off'
 
 for camera in [xray_eye1_writing, xray_eye2_writing, BCam_writing,
                xray_eye3_writing, xray_eye4_writing, OAV_writing]:

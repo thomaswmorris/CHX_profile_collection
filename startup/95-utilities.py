@@ -228,15 +228,16 @@ def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off',figure_num
     # get the scan information:
     if uid == '-1':
         uid=-1
+    h=db[uid]
     if det == 'default':
-        if db[uid].start.detectors[0] == 'elm' and suffix=='default':
+        if h.start['detectors'][0] == 'elm' and suffix=='default':
             intensity_field='elm_sum_all'
-        elif db[uid].start.detectors[0] == 'elm':
+        elif h.start['detectors'][0] == 'elm':
             intensity_field='elm'+suffix
         elif suffix == 'default':
-            intensity_field= db[uid].start.detectors[0]+'_stats1_total'
+            intensity_field= h.start['detectors'][0]+'_stats1_total'
         else:
-            intensity_field= db[uid].start.detectors[0]+suffix
+            intensity_field= h.start['detectors'][0]+suffix
     else:
         if det=='elm' and suffix == 'default':
             intensity_field='elm_sum_all'
@@ -247,7 +248,7 @@ def ps(uid='-1',det='default',suffix='default',shift=.5,logplot='off',figure_num
         else:
             intensity_field=det+suffix 
             
-    field = db[uid].start.motors[0]    
+    field = h.start['motors'][0]    
     
     #field='dcm_b';intensity_field='elm_sum_all'
     [x,y,t]=get_data(uid,field=field, intensity_field=intensity_field, det=None, debug=False)  #need to re-write way to get data
@@ -453,7 +454,7 @@ import bluesky.plans as bp
 ############
 ##################
 ####
-def plot_reflectivity(db_si,db_rh):
+def plot_reflectivity(db_si,db_rh, default_path='/home/xf11id/.ipython/profile_collection/data_files/'):
 	"""
 	by LW 10/04/2016
 	plot measured reflectivity R_Si / R_Rh against theoretical curve for 0.18deg incident angle
@@ -469,9 +470,9 @@ def plot_reflectivity(db_si,db_rh):
 	plt.figure(19)
 	plt.semilogy(en_r,si_dat.elm_sum_all/rh_dat.elm_sum_all,label='measured')
 	#plt.hold(True)
-	r_eng=np.array(np.loadtxt("/home/xf11id/Downloads/R_Rh_0p180.txt"))[:,0]/1e3
-	rsi_0p18=np.array(np.loadtxt("/home/xf11id/Downloads/R_Si_0p180.txt"))[:,1]
-	rrh_0p18=np.array(np.loadtxt("/home/xf11id/Downloads/R_Rh_0p180.txt"))[:,1]
+	r_eng=np.array(np.loadtxt(default_path+"R_Rh_0p180.txt"))[:,0]/1e3
+	rsi_0p18=np.array(np.loadtxt(default_path+"R_Si_0p180.txt"))[:,1]
+	rrh_0p18=np.array(np.loadtxt(default_path+"R_Rh_0p180.txt"))[:,1]
 	plt.semilogy(r_eng,rsi_0p18/rrh_0p18,'r--',label="calc 0.18 deg")
 	plt.xlabel('E [keV]')
 	plt.ylabel('R_Si / R_Rh')

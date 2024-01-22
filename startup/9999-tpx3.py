@@ -70,7 +70,7 @@ class Tpx3Files(Device):
         # TODO also do the images
 
         self._res_uid = res_uid = new_short_uid()
-        write_path_template = '/nsls2/data/chx/legacy/data/%Y/%m/%d/'
+        write_path_template = 'file:/nsls2/data/chx/legacy/data/%Y/%m/%d/'
         self._write_path = write_path = datetime.now().strftime(write_path_template)
         self.raw_filepath.set(write_path).wait()
 
@@ -78,6 +78,7 @@ class Tpx3Files(Device):
         self.raw_file_template.set(f"{res_uid}_0").wait()
 
         # because we need to flush setting to actual server from IOC
+        self.raw_write_enable.set(1).wait()
         self.set_settings.set(1).wait()
 
         # fill in first guess, this ill increment self._n but we really do not want to!
@@ -95,7 +96,7 @@ class Tpx3Files(Device):
 
         
         # TODO check what the % formatting means to the server
-        self.raw_file_template.set(f"{self._res_uid}_{self._n}_").wait()
+        self.raw_file_template.set(f"{self._res_uid}_{self._n:05d}_").wait()
         # because we need to flush setting to actual server from IOC
         self.set_settings.set(1).wait()
 
@@ -107,6 +108,7 @@ class Tpx3Files(Device):
         # TODO reset these to their original values rather than junk
         self.raw_filepath.set('/does/not/exist/').wait()
         self.raw_file_template.set(f"garbage").wait()
+        self.raw_write_enable.set(0).wait()
 
         # because we need to flush setting to actual server from IOC
         self.set_settings.set(1).wait()
@@ -157,7 +159,7 @@ class TimePixDetector(SingleTriggerV33, AreaDetector):
         yield from bps.mv(self.cam.acquire_time, real_exp)
         yield from self.set_num_images(num_frames)            
 
-
+"""
 tpx3 = TimePixDetector("TPX3-TEST:", name="tpx3")
 
 for j in range(1, 5):
@@ -165,6 +167,7 @@ for j in range(1, 5):
     stat.kind = 'normal'
     stat.total.kind = 'hinted'
     stat.ts_total.kind = 'normal'
+"""
     
 # for j in [1, 2, 3, 4]:
 #     getattr(tpx3, f'stats{j}').nd_array_port.set(f'ROI{j}')

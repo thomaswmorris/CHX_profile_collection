@@ -6,6 +6,13 @@ nslsii.configure_base(
     publish_documents_with_kafka=True
 )
 
+# from tiled.client import from_profile
+# from databroker.v1 import Broker
+
+# c = from_profile("chx-secure")
+
+# db = Broker(c)
+
 # set plot properties for 4k monitors
 plt.rcParams['figure.dpi']=200
 

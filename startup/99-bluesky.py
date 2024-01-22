@@ -49,7 +49,7 @@ def move_E(energy, gap=[], xtal="Si111cryo", gapmode="auto", harm=5):
 	to-do: need PV that reflects crystal selection -> new default: xtal='current' -> using whatever xtal is currently in the beam
 	to-do: with PV above, change xtal if selected xtal is not the currently inserted one
 	"""
-	th_B=-1*xf.get_Bragg(xtal,energy)[0]
+	th_B=-1*get_Bragg(xtal,energy)[0]  #use xf.get_Bragg once the package is fixed
 	if gapmode == "manual":
 		if len([gap]) == len([energy])==1:
 			gap = gap

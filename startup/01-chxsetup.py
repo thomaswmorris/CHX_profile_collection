@@ -11,7 +11,7 @@ def print_scan_ids(name, start_doc):
     print("Transient Scan ID: {0} @ {1}".format(start_doc['scan_id'],time.strftime("%Y/%m/%d %H:%M:%S")))
     print("Persistent Unique Scan ID: '{0}'".format(start_doc['uid']))
 
-RE.subscribe(print_scan_ids, 'start')
+#RE.subscribe(print_scan_ids, 'start')
 
 
 from chxtools import attfuncs as att

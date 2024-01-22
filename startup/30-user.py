@@ -221,7 +221,7 @@ bpm2_feedback_selector_a = EpicsSignal('XF:11IDB-BI{XBPM:02}Fdbk:AEn-SP', name='
 #
 #bpm_readings = BPMReadings('', name='bpm_readings')
 
-def feedback_ON():
+def feedback_ON(tolerance=1.0):
     '''
     turns Epics feedback (HDM) OFF and DBPM feedback ON; 
     Note: shutter(s) must be opened and sample should be protected
@@ -237,9 +237,9 @@ def feedback_ON():
     yield from mv(bpm2_feedback_selector_b, 1)
     yield from bps.sleep(2)
     yield from mv(bpm2_feedback_selector_a, 1)
-
+    yield from bps.sleep(2)
     # Check that the beam positions in x and y are within some tolerance of 0
-    TOLERANCE = 1.0
+    TOLERANCE = tolerance
     #reading = yield from bp.read(bpm_readings)
     #y_pos = reading['bpm_readings_y']['value']a
     y_pos = caget('XF:11IDB-BI{XBPM:02}Pos:Y-I')
@@ -583,14 +583,154 @@ def wait_for_motor(dets, motor, target, threshold, start_move=False, md=None):
              yield from bps.abs_set(motor, target, feedback_on= False, group='the_motor') 
          while still_waiting(): 
              yield from bps.sleep(.1)
-         if feedback_on:
-            yield from prep_series_feedback() 
+         #if feedback_on:
+         #   yield from prep_series_feedback() 
          yield from bps.trigger_and_read(dets) 
          yield from bps.wait(group='the_motor') 
      yield from inner() 
 
 
-def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,md_import={}):
+def update_beam_position_dict(detector):
+    """
+    update_beam_position_dict(detector) -> detector ='eiger4m' or 'eiger500k'
+    run after updating direct beam position in CSS (after measuring direct beam position) to enable automatic tracking of direct beam position
+    updates RE.md['beam_position_dict']
+    re-create if RE.md['beam_position_dict'] got deleted:
+    RE.md['beam_position_dict']={'eiger4m': {'beam_center_x': 1126.0, 'beam_center_y': 1209.0,'det_x': 120.20935000000001,'det_y': -134.52025},
+   'eiger500k': {'beam_center_x': 200,'beam_center_y': 230,'det_x': 23.45,'det_y': 56.0}}
+    by LW 6/1/2023
+    """
+    # get direct beam position from CSS:
+    pos_dict = {'eiger4m':[eiger4m.beam_center_x.get(),eiger4m.beam_center_y.get()],
+                'eiger500k':[eiger500k.beam_center_x.get(),eiger500k.beam_center_y.get()]}
+    if detector in list(pos_dict.keys()):
+        direct_beam = pos_dict[detector]
+        RE.md['beam_position_dict'][detector]['beam_center_x']=direct_beam[0]
+        RE.md['beam_position_dict'][detector]['beam_center_y']=direct_beam[1]
+        RE.md['beam_position_dict'][detector]['det_x']=saxs_detector.x.user_readback.value
+        RE.md['beam_position_dict'][detector]['det_y']=saxs_detector.y.user_readback.value
+    else: raise Exception("ERROR: failed to update RE.md['beam_position_dict']")
+
+def calculate_direct_beam_position(detector):
+    if detector in ['eiger4m','eiger500k']:
+        xshift=(saxs_detector.x.user_readback.value-RE.md['beam_position_dict'][detector]['det_x'])/.075
+        yshift=(saxs_detector.y.user_readback.value-RE.md['beam_position_dict'][detector]['det_y'])/.075
+        #xpix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_x']+xshift,0))
+        #ypix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_y']+yshift,0))
+        
+        if detector == 'eiger4m':
+            xpix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_x']+xshift,0))
+            ypix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_y']+yshift,0))
+            eiger4m.beam_center_x.set(xpix);eiger4m.beam_center_y.set(ypix)
+        elif detector == 'eiger500k':
+            xpix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_x']+yshift,0))
+            ypix = int(np.round(RE.md['beam_position_dict'][detector]['beam_center_y']-xshift,0))
+            eiger500k.beam_center_x.set(xpix),eiger500k.beam_center_y.set(ypix)
+        print('New direct beam coordinates for detector: %s: (%s,%s)'%(detector,xpix,ypix))
+    else: raise Exception("ERROR: failed to calculate new direct beam position for detector %s"%detector)
+
+def DBPM_feedback(chan_A=True,chan_B=True,xtol=.3,ytol=.3,max_retry=3,stop_on_error=False,check_PID_loop=True,open_shutters=True,verbose=False):
+    """
+    Macro engages feedback on DBPM.It will try several times to get the beam position to the nominal position if necessary.
+    DBPM_feedback(chan_A=True,chan_B=True,max_retry=2,stop_on_error=False,verbose=False)
+    chan_A/B = True/False: engage/don't engage feedback on channel A/B
+    x/ytol: criteria for feedback successfully engaged: abs(current position-SP) <=x/ytol
+    max_retry: maximum number of attempts to get the feedback engaged by cycling feedback ON/OFF
+    stop_on_error: if True -> raise exception if the beam cannot be brought to the nominal position or if PID loop is found to be not running
+                   if False -> print warning, but continue
+    check_PID_loop: check wether PID loop on siepa3p ioc is running or if it needs to be restarted
+    by LW 09/13/2023
+    11/30/2023 fixed 2 bugs: 1) switch off DBPM chA before checking that PID loop is running; 2) IF NOT checking pid loop, assume pid_loop_running = True
+    """
+    pid_loop_running = True;pid_loop_check = 'not checked'
+    if check_PID_loop:
+        # testing PID loop on hdm encoder feedback: 
+        # 1) make sure feedback on ch_A and ch_B of DBPM is OFF
+        # 2) get current RB value and SP of hdm angle
+        # 3) set SP to RB + 2 and engage feedback, wait 3s and check if abs(SP-RB<.2)
+        # 4) set SP to old RB, wait to reach position, switch hdm feedback off and restore original SP
+        pid_loop_running = False;pid_loop_check = False
+        RE(mv(bpm2_feedback_selector_a, 0));RE(mv(bpm2_feedback_selector_b, 0))  #1)
+        hdm_RB = caget('XF:11IDA-OP{Mir:HDM-Ax:P}Pos-I'); hdm_SP = caget('XF:11IDA-OP{Mir:HDM-Ax:P}PID-SP') #2)
+        #3)
+        caput('XF:11IDA-OP{Mir:HDM-Ax:P}PID-SP',hdm_RB+2); RE(mv(hdm_feedback_selector, 1));RE(sleep(8))
+        RB=[]
+        for i in range(10): RB.append(caget('XF:11IDA-OP{Mir:HDM-Ax:P}Pos-I'));RE(sleep(.2))
+        RB_=np.nanmean(RB)
+        if np.abs(caget('XF:11IDA-OP{Mir:HDM-Ax:P}PID-SP')-RB_)<=.25:
+            pid_loop_running = True; pid_loop_check = False
+            if verbose: print('PID loop on sydor ioc seems to be running!')
+        else:
+            if verbose and (not stop_on_error): print('PID loop on sydor ioc seems to be NOT running!')
+            elif stop_on_error: raise Exception('ERROR: PID loop on sydor ioc needs to be restarted')
+        #4)
+        caput('XF:11IDA-OP{Mir:HDM-Ax:P}PID-SP',hdm_RB);RE(sleep(.2))
+        RE(mv(hdm_feedback_selector, 1));RE(sleep(8));RE(mv(hdm_feedback_selector, 0))
+        caput('XF:11IDA-OP{Mir:HDM-Ax:P}PID-SP',hdm_SP)
+    else:
+        if verbose: print('NOT going to check if PID loop on sydor ioc is running...')
+    
+    # check if beam is on DBPM
+    feedback_possible = False
+    if caget('XF:11ID-CT{Peltier:1}bi10'): #at least one shutter before the DBPM is closed
+        if open_shutters:
+            fe_sh.open();foe_sh.open();pre_sh.open();RE(sleep(3))
+        if caget('XF:11ID-CT{Peltier:1}bi10'): # check if any shutter is still closed (that's of course the case if open_shutters=False)
+            if verbose and not stop_on_error: print('ERROR: at least one shutter upstream of the DBPM is closed')
+            elif stop_on_error:
+                raise Exception('ERROR: at least one shutter upstream of the DBPM is closed')
+        
+    if not caget('XF:11ID-CT{Peltier:1}bi10'): # shutters are open (now), check if there is sufficient intensity on the DBPM
+        I_tot = caget('XF:11IDB-BI{XBPM:02}Ampl:CurrTotal-I')
+        I_scale =[1,10,100,1000,35000][caget('XF:11IDB-BI{XBPM:02}Gain:Level-SP')]
+        I_cutoff = caget('XF:11IDB-BI{XBPM:02}Fdbk:AutoDisableLevel-SP')
+        if np.abs(I_tot) >= I_scale*I_cutoff/100:
+            feedback_possible = True
+            if verbose: print('Intensity on DBPM sufficient to engage feedback.')
+        else:
+            if verbose and not stop_on_error: print('ERROR: intensity on the DBPM is too low to engage feedback')
+            elif stop_on_error:
+                raise Exception('ERROR: intensity on the DBPM is too low to engage feedback')
+
+    # engage DBPM feedback (if pre-requisites are met) and check if the beam is in position
+    a_SP = caget('XF:11IDB-BI{XBPM:02}Fdbk:A-I');b_SP = caget('XF:11IDB-BI{XBPM:02}Fdbk:B-I');
+    in_position = False; pos_list =['a','b'] 
+    RE(mv(hdm_feedback_selector, 0)) # encoder feedback on hdm OFF
+    for i in range(max_retry):
+        if verbose:
+            print('try #%s in_position: %s feedback_possible: %s pid_loop_running: %s'%(i,in_position,feedback_possible,pid_loop_check))
+        if (not in_position) and feedback_possible and pid_loop_running:
+            if 'a' in pos_list:
+                RE(mv(bpm2_feedback_selector_a, 0));RE(sleep(.5))
+                RE(mv(bpm2_feedback_selector_a, 1))
+            if 'b' in pos_list:
+                RE(mv(bpm2_feedback_selector_b, 0));RE(sleep(.5))
+                RE(mv(bpm2_feedback_selector_b, 1))
+            RE(sleep(3));pos_a = [];pos_b=[]
+            for i in range(10):
+                pos_a.append(caget('XF:11IDB-BI{XBPM:02}Pos:X-I'))
+                pos_b.append(caget('XF:11IDB-BI{XBPM:02}Pos:Y-I'));RE(sleep(.2))
+            pos_a_ = np.nanmean(pos_a);pos_b_ = np.nanmean(pos_b)
+            if np.abs(pos_a_-a_SP)<xtol:
+                try:
+                    pos_list.remove('a')
+                except: pass
+            if np.abs(pos_b_-b_SP)<ytol:
+                try:
+                    pos_list.remove('b')
+                except: pass
+        if len(pos_list) == 0 and bpm2_feedback_selector_a.get() and bpm2_feedback_selector_b.get():
+            in_position = True
+    # conclusion:
+    if in_position and verbose: print('DBPM successfully engaged, beam in position within xtol= %s & ytol= %s'%(xtol,ytol))
+    elif not in_position and verbose and (not stop_on_error):
+        print('ERROR: DBPM not engaged, beam position off target!')
+    elif not in_position and stop_on_error:
+        raise Exception('ERROR: DBPM feedback unable to bring the beam to target position')
+
+
+
+def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comment='', feedback_on=False, PV_trigger=False, position_trigger=False ,analysis='', use_xbpm=False, OAV_mode='none',auto_compression=False,md_import={},auto_beam_position=True):
     """
     det='eiger1m' / 'eiger4m' / 'eiger500k'
     shutter_mode='single' / 'multi'
@@ -603,6 +743,7 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     update 01/23/2017:  for imnum <100, set chunk size to 10 images to force download. Might still cause problems under certain conditions!!
     yugang add use_xbpm option at Sep 13, 2017 for test fast shutter by using xbpm
     OAV_mode added by LW 01/18/2018: 'none': no image data recorded, 'single': record single image at start of Eiger series, 'start_end': record single image at start and end of Eiger series, 'movie': take contineous stream of images for approximate duration of Eiger series
+                added by LW 12/03/2023: 'movie_max': same as movie, but set frame rate equal to current exposure time
     eiger500k added by LW 03/20/2018, Eiger500k multi shutter NOT yet implemented,
               debug by YG 03/22/2018, fix a bug and add Eiger500K multi mode
     03/26/2018: added hook 'analysis' for jupyter pipeline
@@ -615,7 +756,8 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     position_trigger={'motor':diff.xh,'target':-.2,'threshold':.1,'start_move':False} -> trigger when motor position within threshold,
     start_move=False -> don't move motor from series, start_move=True: move motor from series
     10/02/2020: collect series specific md in dictionary and use md in count to capture it; add possibility to pass md dictionary to series; 
-    add auto-comment: comment='descr1'+'AUTO_COMMENT'+'descr2' -> 'descr1 expt=xxxs, imnum=yyyy, Trans= zzz sample: RE.md['sample'] descr2    
+    add auto-comment: comment='descr1'+'AUTO_COMMENT'+'descr2' -> 'descr1 expt=xxxs, imnum=yyyy, Trans= zzz sample: RE.md['sample'] descr2
+    auto_beam_position: if True, updates PVs for direct beam position based on reference positions in RE.md['beam_position_dict'] and current detector position
     """
         
     # Define trigger PV (use is optional)
@@ -637,6 +779,9 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     if acqp=='auto':
         acqp=expt
     
+    if auto_beam_position and 'eiger1m' not in det:     # update direct beam position based on md reference and current detector position
+        calculate_direct_beam_position(det)
+
     #check for maxiumum frame rates (and correct if higher...might be redundant to what is done on the Dectris driver level, but ensures consistent md):
     freq_dict={'eiger1m':.00034,'eiger4m':.0007,'eiger500k':.000112}
     if acqp < freq_dict[det]:
@@ -726,8 +871,8 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     
     print('OAV_mode: '+OAV_mode)    ### ADDED OAV_mode HERE!
     
-    if OAV_mode not in ['none','single','start_end','movie']:
-        raise series_Exception('error: OAV_mode needs to be none|single|start_end|movie...')
+    if OAV_mode not in ['none','single','start_end','movie', 'movie_max']:
+        raise series_Exception('error: OAV_mode needs to be none|single|start_end|movie|movie_max...')
     
     if OAV_mode == 'none':
         detlist=[detector]
@@ -735,21 +880,22 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
         detlist=[detector,OAV_writing]
         OAV.cam.acquire.set(0) # stop camera and set mode to multiple, otherwise something is resetting the number of images...
         OAV.cam.image_mode.set(1)
-        org_pt=OAV.cam.acquire_period.value 
-        org_ni=OAV.cam.num_images.value
+        org_pt=OAV.cam.acquire_period.get() 
+        org_ni=OAV.cam.num_images.get()
+        org_acqt = OAV.cam.acquire_time.get()
     
     if OAV_mode == 'single':
         OAV.cam.num_images.put(2,wait=True) ## if switching on light, first image will be dark
     if OAV_mode == 'start_end': 
         pt=(acqp)*imnum #period between two images to span Eiger series (exposure time for OAV image neglected)
         OAV.cam.num_images.put(2,wait=True)
-        OAV.cam.acquire_period.put(pt,wait=True) 
-    if OAV_mode == 'movie':
-        print('set OAV')
-        ni=acqp*imnum/OAV.cam.acquire_period.value
+        OAV.cam.acquire_period.put(pt,wait=True)
+    if OAV_mode == 'movie_max':
+        OAV.cam.acquire_period.put(OAV.cam.acquire_time.get(),wait=True)
+    if OAV_mode == 'movie' or OAV_mode == 'movie_max':
+        ni=acqp*imnum/OAV.cam.acquire_period.get()
         ni=ni-ni*.2
         OAV.cam.num_images.put(np.ceil(ni),wait=True)
-        
         
     if use_xbpm:
         caput( 'XF:11IDB-BI{XBPM:02}FaSoftTrig-SP',1,wait=True) #yugang add at Sep 13, 2017 for test fast shutter by using xbpm
@@ -762,16 +908,21 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
       RE(wait_for_pv(dets,trigger_PV,feedback_on=feedback_on,md=md_import),Measurement=total_comment)
     elif position_trigger:
       dets = detlist     
-      RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'], feedback_on=feedback_on, md=md_import),Measurement=total_comment) 
+      #RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'], feedback_on=feedback_on, md=md_import),Measurement=total_comment) 
+      RE(wait_for_motor(dets, position_trigger['motor'], position_trigger['target'], position_trigger['threshold'],start_move=position_trigger['start_move'], md=md_import),Measurement=total_comment) 
+
     else:
       if feedback_on:
-        RE(prep_series_feedback())
+        #RE(prep_series_feedback()) -> OLD FAST SHUTTER UPSTREAM OF DBPM
+        if (not bpm2_feedback_selector_a.get()) or (not bpm2_feedback_selector_b.get()): # feedback isn't already running
+            DBPM_feedback(chan_A=True,chan_B=True,xtol=.3,ytol=.3,max_retry=3,stop_on_error=False,check_PID_loop=False,open_shutters=False,verbose=False)
       RE(count(detlist,md=md_import),Measurement=total_comment)  ### TAKING DATA
     
     # setting image number and period back for OAV camera:
-    if OAV_mode != 'none':     
+    if OAV_mode != 'none':    
         OAV.cam.num_images.set(org_ni)
         OAV.cam.acquire_period.set(org_pt)
+        OAV.cam.acquire_time.set(org_acqt)
         # also -at least temporarily- need to set mode back and restart acquisition.
         OAV.cam.image_mode.put(2)
         OAV.cam.acquire.put(1)
@@ -779,19 +930,37 @@ def series(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,comme
     ####### add acquired uid to database list for automatic compression #########
     if auto_compression:
         try:
+            #scan_add = None
+            #for l in range(10): # with multithreading, other uids might have completed before this one, e.g. with Pilatus 800k WAXS detector -> need to find last uid that uses same detector as this series
+            #    if scan_add is None:
+            #        h=db[-(l+1)]
+            #        #for d in range(len(h.start['plan_args']['detectors'])):
+            #        if detector.name in list(h.devices()): scan_add=l+1
+            #uid_add=db[-scan_add]['start']['uid']
             uid_add=db[-1]['start']['uid']
             uid_list=data_acquisition_collection.find_one({'_id':'general_list'})['uid_list']
             uid_list.append(uid_add)
             data_acquisition_collection.update_one({'_id': 'general_list'},{'$set':{'uid_list' : uid_list}})
             print('Added uid %s to list for automatic compression!'%uid_add)
         except:
-            print('Sorry, failed to add uid %s to list for automatic compression!'%uid_add)
+            try:
+                print('Sorry, failed to add uid %s to list for automatic compression!'%uid_add)
+            except: # in case we cannot find uid_add at all
+                print('Sorry, failed to add uid to list for automatic compression!')
     else:
         print('uid not added to database for automatic compression')
     ############################################################################### THE END #########################
 
 
-    
+def check_uid():
+    scan_add = None
+    for l in range(10): # with multithreading, other uids might have completed before this one, e.g. with Pilatus 800k WAXS detector -> need to find last uid that uses same detector as this series
+        print(l)
+        if scan_add is None:
+            h=db[-(l+1)]
+            for d in range(len(h.start['plan_args']['detectors'])):
+                if detector.name in h.start['plan_args']['detectors'][d]: scan_add=l+1
+    uid_add=db[-scan_add]['start']['uid']   
 
     
     
@@ -1067,7 +1236,33 @@ def series_old(det='eiger4m',shutter_mode='single',expt=.1,acqp='auto',imnum=5,c
 
 class series_Exception(Exception):
     pass
-  
+
+## Peltier cooler
+class Peltier_Cooler(Device):
+    enable_command = Cpt(EpicsSignal, 'B-ES{Pel-IO:1}DO:1-Cmd')
+    enable_status = Cpt(EpicsSignal, 'B-ES{Pel-IO:1}DO:1-Sts')
+    set_power_command = Cpt(EpicsSignal, '-CT{Peltier:1}ai2')
+    #close_command = Cpt(EpicsSignal, 'Cmd:Cls-Cmd')
+    #close_status = Cpt(EpicsSignal, 'Cmd:Cls-Sts')
+
+    def enable(self):
+        self.enable_command.put(1)
+        print('Peltier Power enabled.')
+        
+    def disable(self):
+        self.enable_command.put(0,use_complete=True)
+        print('Peltier Power diabled.')
+            
+    def power(self,P):
+        self.set_power_command.put(P)
+        print('Peltier Power set to: %s percent'%P)
+        
+    def status(self):
+        return print('Peltier enabled: %s   Peltier Power: %s percent'%(bool(self.enable_status.get()),self.set_power_command.get()))
+
+peltier = Peltier_Cooler('XF:11ID',name='peltier')
+
+
   
 # heating with sample chamber, using both heaters:
 def set_temperature(Tsetpoint,heat_ramp=3,cool_ramp=0,log_entry='on',check_vac=True):       # MADE MAJOR CHANGES: NEEDS TESTING!!! [01/23/2017 LW]

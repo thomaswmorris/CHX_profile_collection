@@ -56,4 +56,8 @@ fast_sh = TwoPVShutter('XF:11IDB-ES{Zebra}:OUT1_TTL:STA',
                        write_pv='XF:11IDB-ES{Zebra}:SOFT_IN:B0',
                        name='fast_sh')
 
+pre_sh = TwoPVShutter('XF:11IDB-ES{Pel-IO:1}DO:8-Sts',
+                       write_pv='XF:11IDB-ES{Pel-IO:1}DO:8-Cmd',
+                       name='pre_sh')
+
 
