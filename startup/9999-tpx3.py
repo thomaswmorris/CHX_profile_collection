@@ -70,7 +70,7 @@ class Tpx3Files(Device):
         # TODO also do the images
 
         self._res_uid = res_uid = new_short_uid()
-        write_path_template = 'file:/nsls2/data/chx/legacy/data/%Y/%m/%d/'
+        write_path_template = f'file:{proposal_dir}/data/%Y/%m/%d/'
         self._write_path = write_path = datetime.now().strftime(write_path_template)
         self.raw_filepath.set(write_path).wait()
 
