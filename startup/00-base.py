@@ -67,12 +67,8 @@ data_session = RE.md.get("data_session")
 if data_session is None:
     raise ValueError("Data session is None!")
 
-# cycle = '2023-3' # TODO: don't hardcode this
 cycle = RE.md['cycle']
-
-# proposal_dir = f"/nsls2/data/chx/proposals/{cycle}/{data_session}"
-# Path(proposal_dir).mkdir(parents=True, exist_ok=True)
-RE.md['proposal_dir_path'] = f"/nsls2/data/chx/proposals/{cycle}/{data_session}/assets/"
+proposal_dir = f"/nsls2/data/chx/proposals/{cycle}/{data_session}"
 
 # send ophyd debug log to the console
 # import logging
